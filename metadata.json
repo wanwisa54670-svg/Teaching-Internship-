@@ -1,0 +1,6 @@
+{
+  "name": "รายงานการฝึกสอนประสบการณ์วิชาชีพครู (Teacher Practicum Report)",
+  "description": "ระบบรายงานการฝึกสอนประสบการณ์วิชาชีพครูและการตั้งค่าโปรไฟล์",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
