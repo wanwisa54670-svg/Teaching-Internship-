@@ -144,7 +144,7 @@ export const ReportsSection: React.FC<ReportsSectionProps> = ({
 
         <div className={`h-[1px] mx-4 ${isDark ? 'bg-slate-800' : 'bg-[#e2e7ff]'}`} />
 
-        {/* Item 2: Cloud Backup & Google Drive Sync */}
+        {/* Item 2: Cloud Backup & Firebase Sync */}
         <div className="p-4 flex items-center justify-between">
           <div className="flex items-center gap-3.5 min-w-0">
             <div
@@ -160,14 +160,14 @@ export const ReportsSection: React.FC<ReportsSectionProps> = ({
                   isDark ? 'text-white' : 'text-[#131b2e]'
                 }`}
               >
-                สำรองข้อมูลบันทึก 18 สัปดาห์
+                สำรองข้อมูลบันทึก 18 สัปดาห์ & งานวิชาการ
               </span>
               <span
                 className={`text-[13px] truncate ${
                   isDark ? 'text-slate-400' : 'text-[#444651]'
                 }`}
               >
-                เชื่อมต่อ Google Drive: {backupEmail}
+                เชื่อมต่อฐานข้อมูล Firebase: Teaching-Internship
               </span>
             </div>
           </div>

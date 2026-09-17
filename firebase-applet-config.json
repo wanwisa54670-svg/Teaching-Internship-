@@ -1,12 +1,12 @@
 {
-  "projectId": "protean-radius-zpthm",
-  "appId": "1:946234437675:web:b9c2ed981629f180a2fa6e",
-  "apiKey": "AIzaSyBfl6qPTCS9QNKQLDAc-Y7GZraktZnloy0",
-  "authDomain": "protean-radius-zpthm.firebaseapp.com",
+  "projectId": "teaching-internship",
+  "appId": "1:323913510900:web:6e1669a4290093c099d3a1",
+  "apiKey": "AIzaSyDMXdkYmGDYw-1kci6Nixq85RYX_EDAKQQ",
+  "authDomain": "teaching-internship.firebaseapp.com",
   "firestoreDatabaseId": "ai-studio-teacherpracticum-4d67fcce-e872-48c8-a088-60b220fa3aab",
-  "storageBucket": "protean-radius-zpthm.firebasestorage.app",
-  "messagingSenderId": "946234437675",
+  "storageBucket": "teaching-internship.firebasestorage.app",
+  "messagingSenderId": "323913510900",
   "measurementId": "",
-  "oAuthClientId": "946234437675-aj7q4equdpvc9b9fp9fp23iqckfkuipt.apps.googleusercontent.com",
+  "oAuthClientId": "323913510900-801v03lbujcad94pjndiqpl8boqkj1pp.apps.googleusercontent.com",
   "recaptchaSiteKey": ""
 }

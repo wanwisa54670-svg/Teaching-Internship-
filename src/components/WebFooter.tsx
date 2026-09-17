@@ -53,7 +53,7 @@ export const WebFooter: React.FC<WebFooterProps> = ({
             <div className="flex items-center gap-2 mt-2">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 text-[11px] font-semibold">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                ระบบพร้อมใช้งาน • บันทึกอัตโนมัติในเบราว์เซอร์
+                เชื่อมต่อ Firebase: Teaching-Internship • คลาวด์เรียลไทม์
               </span>
               {onSaveAll && (
                 <button

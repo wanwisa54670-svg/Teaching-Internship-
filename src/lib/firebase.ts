@@ -1,11 +1,33 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInAnonymously,
+  signOut,
+  onAuthStateChanged,
+  User,
+} from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
+
+export const FIREBASE_PROJECT_NAME = 'Teaching-Internship';
+
+export function getActiveUserId(): string {
+  if (auth.currentUser?.uid) {
+    return auth.currentUser.uid;
+  }
+  let localId = localStorage.getItem('tp_firebase_user_id');
+  if (!localId) {
+    localId = 'intern_' + Math.random().toString(36).substring(2, 10);
+    localStorage.setItem('tp_firebase_user_id', localId);
+  }
+  return localId;
+}
 
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
@@ -78,4 +100,4 @@ export async function logOutOfFirebase(): Promise<void> {
   await signOut(auth);
 }
 
-export { onAuthStateChanged };
+export { onAuthStateChanged, signInAnonymously };

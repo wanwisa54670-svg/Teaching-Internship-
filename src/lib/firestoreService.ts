@@ -19,6 +19,7 @@ import {
   AnnouncementItem,
   AttendanceRecord,
 } from '../types';
+import { MentorsData } from '../components/modals/MentorsModal';
 
 /**
  * Saves or updates student user profile and general school details to Cloud Firestore
@@ -27,7 +28,13 @@ export async function syncUserProfileToFirestore(
   userId: string,
   profile: TraineeProfile,
   schoolInfo: SchoolDetails,
-  stats?: DashboardStats
+  stats?: DashboardStats,
+  extra?: {
+    tasks?: TaskItem[];
+    announcements?: AnnouncementItem[];
+    attendanceRecords?: AttendanceRecord[];
+    mentors?: MentorsData;
+  }
 ) {
   const path = `users/${userId}`;
   try {
@@ -66,6 +73,11 @@ export async function syncUserProfileToFirestore(
           staffRoom: schoolInfo.staffRoom || '',
         },
         stats: stats || null,
+        tasks: extra?.tasks || null,
+        announcements: extra?.announcements || null,
+        attendanceRecords: extra?.attendanceRecords || null,
+        mentors: extra?.mentors || null,
+        firebaseProject: 'teaching-internship',
         updatedAt: new Date().toISOString(),
       },
       { merge: true }
@@ -212,6 +224,10 @@ export async function fetchFullUserDataFromFirestore(userId: string) {
     let profile: TraineeProfile | null = null;
     let schoolInfo: SchoolDetails | null = null;
     let stats: DashboardStats | null = null;
+    let tasks: TaskItem[] | null = null;
+    let announcements: AnnouncementItem[] | null = null;
+    let attendanceRecords: AttendanceRecord[] | null = null;
+    let mentors: MentorsData | null = null;
 
     if (userSnap.exists()) {
       const data = userSnap.data();
@@ -235,6 +251,18 @@ export async function fetchFullUserDataFromFirestore(userId: string) {
       }
       if (data.stats) {
         stats = data.stats;
+      }
+      if (data.tasks) {
+        tasks = data.tasks;
+      }
+      if (data.announcements) {
+        announcements = data.announcements;
+      }
+      if (data.attendanceRecords) {
+        attendanceRecords = data.attendanceRecords;
+      }
+      if (data.mentors) {
+        mentors = data.mentors;
       }
     }
 
@@ -281,6 +309,10 @@ export async function fetchFullUserDataFromFirestore(userId: string) {
       profile,
       schoolInfo,
       stats,
+      tasks,
+      announcements,
+      attendanceRecords,
+      mentors,
       weeklyLogs: logs.length > 0 ? logs : null,
       academicItems: academicItems.length > 0 ? academicItems : null,
       photos: photos.length > 0 ? photos : null,
