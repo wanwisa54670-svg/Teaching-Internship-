@@ -2,11 +2,13 @@ import React, { useState, useRef } from 'react';
 import { AcademicItem } from '../../types';
 import { PdfViewerModal } from '../modals/PdfViewerModal';
 import { ScheduleImageModal } from '../modals/ScheduleImageModal';
+import { processUploadedFile, triggerCelebration } from '../../lib/fileHelper';
 
 interface AcademicsViewProps {
   items: AcademicItem[];
   onUpdateItems: (items: AcademicItem[]) => void;
   onShowToast: (msg: string) => void;
+  onPreviewFile?: (url: string, name: string, type?: string, size?: string) => void;
   isDark?: boolean;
 }
 
@@ -171,77 +173,60 @@ export const AcademicsView: React.FC<AcademicsViewProps> = ({
   };
 
   // PDF File upload handler (Used for แผนการสอน & วิจัยในชั้นเรียน)
-  const handlePdfUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
-      alert('กรุณาเลือกไฟล์ PDF เท่านั้น');
-      return;
+    try {
+      const processed = await processUploadedFile(file);
+      setFormData((prev) => ({
+        ...prev,
+        fileName: processed.name,
+        fileSize: processed.size,
+        fileUrl: processed.dataUrl,
+      }));
+      onShowToast(`แนบไฟล์ ${processed.name} (${processed.size}) สำเร็จ`);
+    } catch (err: unknown) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : 'ไม่สามารถประมวลผลไฟล์ได้');
     }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (typeof event.target?.result === 'string') {
-        const sizeMb = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
-        setFormData((prev) => ({
-          ...prev,
-          fileName: file.name,
-          fileSize: sizeMb,
-          fileUrl: event.target!.result as string,
-        }));
-        onShowToast(`แนบไฟล์ ${file.name} เรียบร้อยแล้ว`);
-      }
-    };
-    reader.readAsDataURL(file);
   };
 
   // Schedule Image upload handler
-  const handleScheduleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleScheduleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      alert('กรุณาเลือกไฟล์รูปภาพเท่านั้น (JPG, PNG, WebP)');
-      return;
+    try {
+      const processed = await processUploadedFile(file);
+      setFormData((prev) => ({
+        ...prev,
+        scheduleImageUrl: processed.dataUrl,
+        scheduleImageName: processed.name,
+      }));
+      onShowToast(`แนบภาพตารางสอน ${processed.name} สำเร็จ`);
+    } catch (err: unknown) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : 'ไม่สามารถประมวลผลรูปภาพได้');
     }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (typeof event.target?.result === 'string') {
-        setFormData((prev) => ({
-          ...prev,
-          scheduleImageUrl: event.target!.result as string,
-          scheduleImageName: file.name,
-        }));
-        onShowToast(`แนบภาพตารางสอน ${file.name} เรียบร้อยแล้ว`);
-      }
-    };
-    reader.readAsDataURL(file);
   };
 
   // Supervision photo upload handler
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      alert('กรุณาเลือกไฟล์รูปภาพเท่านั้น');
-      return;
+    try {
+      const processed = await processUploadedFile(file);
+      setFormData((prev) => ({
+        ...prev,
+        supervisionPhotos: [...(prev.supervisionPhotos || []), processed.dataUrl],
+      }));
+      onShowToast('เพิ่มรูปภาพการนิเทศเรียบร้อยแล้ว');
+    } catch (err: unknown) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : 'ไม่สามารถประมวลผลรูปภาพได้');
     }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (typeof event.target?.result === 'string') {
-        const url = event.target!.result as string;
-        setFormData((prev) => ({
-          ...prev,
-          supervisionPhotos: [...(prev.supervisionPhotos || []), url],
-        }));
-        onShowToast('เพิ่มรูปภาพการนิเทศเรียบร้อยแล้ว');
-      }
-    };
-    reader.readAsDataURL(file);
   };
 
   const handleAddPhotoUrl = () => {
@@ -289,6 +274,7 @@ export const AcademicsView: React.FC<AcademicsViewProps> = ({
           : it
       );
       onUpdateItems(updated);
+      triggerCelebration({ count: 40, spread: 60 });
       onShowToast(`✓ บันทึกการแก้ไข "${formData.title}" เรียบร้อยแล้ว`);
     } else {
       const newItem: AcademicItem = {
@@ -311,6 +297,7 @@ export const AcademicsView: React.FC<AcademicsViewProps> = ({
         scoreOrFeedback: formData.scoreOrFeedback,
       };
       onUpdateItems([newItem, ...items]);
+      triggerCelebration({ count: 50, spread: 70 });
       onShowToast(`✓ เพิ่มเอกสาร "${formData.title}" เรียบร้อยแล้ว`);
     }
 
@@ -359,7 +346,19 @@ export const AcademicsView: React.FC<AcademicsViewProps> = ({
             ตารางสอน • แผนการสอน • วิจัยในชั้นเรียน • รายงานการนิเทศ ({items.length} รายการ)
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => {
+              onUpdateItems([...items]);
+              onShowToast('✓ บันทึกข้อมูลงานวิชาการทั้งหมดเรียบร้อยแล้ว');
+            }}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[12px] font-semibold transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
+            title="บันทึกข้อมูลงานวิชาการทั้งหมด"
+          >
+            <span className="material-symbols-outlined text-[16px]">save</span>
+            <span>บันทึกทั้งหมด</span>
+          </button>
           <button
             type="button"
             onClick={() => handleOpenAdd()}
@@ -410,9 +409,9 @@ export const AcademicsView: React.FC<AcademicsViewProps> = ({
       </div>
 
       {/* Academic Items List */}
-      <div className="grid grid-cols-1 gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {filteredItems.length === 0 ? (
-          <div className="py-12 flex flex-col items-center justify-center text-center gap-2 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+          <div className="lg:col-span-2 py-12 flex flex-col items-center justify-center text-center gap-2 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
             <span className="material-symbols-outlined text-[36px] text-slate-300">
               folder_open
             </span>
@@ -1165,21 +1164,37 @@ export const AcademicsView: React.FC<AcademicsViewProps> = ({
               </div>
 
               {/* Submit buttons */}
-              <div className="pt-2 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-[13px] cursor-pointer"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 h-10 rounded-xl bg-[#1e3a8a] hover:bg-[#1e40af] text-white font-semibold text-[13px] shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <span className="material-symbols-outlined text-[18px]">save</span>
-                  <span>{editingItem ? 'บันทึกการแก้ไข' : 'บันทึกผลงาน'}</span>
-                </button>
+              <div className="pt-2 flex items-center justify-between gap-3">
+                {editingItem ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleDelete(editingItem.id, editingItem.title);
+                      setIsModalOpen(false);
+                    }}
+                    className="h-10 px-3.5 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 font-semibold text-[13px] cursor-pointer flex items-center gap-1.5 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">delete</span>
+                    <span>ลบเอกสารนี้</span>
+                  </button>
+                ) : <div />}
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="h-10 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-[13px] cursor-pointer"
+                  >
+                    ยกเลิก
+                  </button>
+                  <button
+                    type="submit"
+                    className="h-10 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[13px] shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">save</span>
+                    <span>{editingItem ? 'บันทึกการแก้ไข' : 'บันทึกผลงาน'}</span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>

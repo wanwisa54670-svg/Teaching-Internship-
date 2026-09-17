@@ -1,11 +1,14 @@
 import React, { useState, useRef } from 'react';
 import { WeeklyLogItem, DailyWorkRecord, WeekPhoto } from '../../types';
 import { formatThaiDate, getDayOfWeekFromDate, getTodayDateString } from '../../utils/dateUtils';
+import { INITIAL_18_WEEKS } from '../../data/initialWeeklyLogs';
+import { processUploadedFile, triggerCelebration } from '../../lib/fileHelper';
 
 interface WeeklyLogViewProps {
   logs: WeeklyLogItem[];
   onUpdateLogs: (logs: WeeklyLogItem[]) => void;
   onShowToast: (msg: string) => void;
+  onPreviewFile?: (url: string, name: string, type?: string, size?: string) => void;
   isDark?: boolean;
 }
 
@@ -13,6 +16,7 @@ export const WeeklyLogView: React.FC<WeeklyLogViewProps> = ({
   logs,
   onUpdateLogs,
   onShowToast,
+  onPreviewFile,
   isDark = false,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -36,6 +40,7 @@ export const WeeklyLogView: React.FC<WeeklyLogViewProps> = ({
 
   // 3. Daily Log Add/Edit Modal
   const [isDailyModalOpen, setIsDailyModalOpen] = useState(false);
+  const [targetWeekForDaily, setTargetWeekForDaily] = useState<WeeklyLogItem | null>(null);
   const [editingDaily, setEditingDaily] = useState<DailyWorkRecord | null>(null);
   const [dailyForm, setDailyForm] = useState({
     date: getTodayDateString(),
@@ -170,6 +175,7 @@ export const WeeklyLogView: React.FC<WeeklyLogViewProps> = ({
   const handleOpenAddDaily = (weekItem?: WeeklyLogItem) => {
     const target = weekItem || currentDetailWeek;
     if (!target) return;
+    setTargetWeekForDaily(target);
     setEditingDaily(null);
     setDailyForm({
       date: getTodayDateString(),
@@ -181,7 +187,11 @@ export const WeeklyLogView: React.FC<WeeklyLogViewProps> = ({
     setIsDailyModalOpen(true);
   };
 
-  const handleOpenEditDaily = (daily: DailyWorkRecord) => {
+  const handleOpenEditDaily = (daily: DailyWorkRecord, weekItem?: WeeklyLogItem) => {
+    const target = weekItem || currentDetailWeek;
+    if (target) {
+      setTargetWeekForDaily(target);
+    }
     setEditingDaily(daily);
     setDailyForm({
       date: daily.date,
@@ -193,27 +203,30 @@ export const WeeklyLogView: React.FC<WeeklyLogViewProps> = ({
     setIsDailyModalOpen(true);
   };
 
-  const handleDeleteDaily = (dailyId: string) => {
-    if (!currentDetailWeek) return;
+  const handleDeleteDaily = (dailyId: string, targetWeekId?: string) => {
+    const targetId = targetWeekId || currentDetailWeek?.id || targetWeekForDaily?.id;
+    if (!targetId) return;
     if (confirm('คุณต้องการลบบันทึกการทำงานของวันนี้ใช่หรือไม่?')) {
-      const updatedDaily = (currentDetailWeek.dailyLogs || []).filter((d) => d.id !== dailyId);
       const updatedLogs = logs.map((l) =>
-        l.id === currentDetailWeek.id ? { ...l, dailyLogs: updatedDaily } : l
+        l.id === targetId
+          ? { ...l, dailyLogs: (l.dailyLogs || []).filter((d) => d.id !== dailyId) }
+          : l
       );
       onUpdateLogs(updatedLogs);
-      onShowToast('ลบบันทึกการทำงานประจำวันเรียบร้อย');
+      onShowToast('✓ ลบบันทึกการทำงานประจำวันเรียบร้อย');
     }
   };
 
   const handleSaveDaily = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentDetailWeek) return;
+    const targetWeek = targetWeekForDaily || currentDetailWeek;
+    if (!targetWeek) return;
 
     const formattedDate = formatThaiDate(dailyForm.date);
     const dayOfWeek = getDayOfWeekFromDate(dailyForm.date);
 
     if (editingDaily) {
-      const updatedDailyList = (currentDetailWeek.dailyLogs || []).map((d) =>
+      const updatedDailyList = (targetWeek.dailyLogs || []).map((d) =>
         d.id === editingDaily.id
           ? {
               ...d,
@@ -224,15 +237,19 @@ export const WeeklyLogView: React.FC<WeeklyLogViewProps> = ({
               activities: dailyForm.activities.trim(),
               notes: dailyForm.notes.trim(),
               photoUrl: dailyForm.photoUrl.trim(),
+              fileName: (dailyForm as any).fileName || d.fileName,
+              fileType: (dailyForm as any).fileType || d.fileType,
+              fileSize: (dailyForm as any).fileSize || d.fileSize,
             }
           : d
       );
 
       const updatedLogs = logs.map((l) =>
-        l.id === currentDetailWeek.id ? { ...l, dailyLogs: updatedDailyList } : l
+        l.id === targetWeek.id ? { ...l, dailyLogs: updatedDailyList } : l
       );
       onUpdateLogs(updatedLogs);
-      onShowToast('แก้ไขบันทึกการทำงานประจำวันสำเร็จ');
+      triggerCelebration({ count: 40, spread: 60 });
+      onShowToast('✓ แก้ไขบันทึกการทำงานประจำวันสำเร็จ');
     } else {
       const newDailyRecord: DailyWorkRecord = {
         id: `d-${Date.now()}`,
@@ -243,20 +260,35 @@ export const WeeklyLogView: React.FC<WeeklyLogViewProps> = ({
         activities: dailyForm.activities.trim(),
         notes: dailyForm.notes.trim(),
         photoUrl: dailyForm.photoUrl.trim(),
+        fileName: (dailyForm as any).fileName || undefined,
+        fileType: (dailyForm as any).fileType || undefined,
+        fileSize: (dailyForm as any).fileSize || undefined,
       };
 
-      const updatedDailyList = [...(currentDetailWeek.dailyLogs || []), newDailyRecord].sort(
+      const updatedDailyList = [...(targetWeek.dailyLogs || []), newDailyRecord].sort(
         (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
       );
 
       const updatedLogs = logs.map((l) =>
-        l.id === currentDetailWeek.id ? { ...l, dailyLogs: updatedDailyList } : l
+        l.id === targetWeek.id ? { ...l, dailyLogs: updatedDailyList } : l
       );
       onUpdateLogs(updatedLogs);
-      onShowToast('เพิ่มบันทึกการทำงานประจำวันเรียบร้อย');
+      triggerCelebration({ count: 50, spread: 70 });
+      onShowToast('✓ เพิ่มบันทึกการทำงานประจำวันสำเร็จ');
     }
 
     setIsDailyModalOpen(false);
+  };
+
+  const handleResetTo18Weeks = () => {
+    if (
+      confirm(
+        'คุณต้องการคืนค่าสมุดบันทึกเป็นค่าเริ่มต้นทั้ง 18 สัปดาห์ใช่หรือไม่? (ข้อมูลที่บันทึกจะถูกแทนที่ด้วยข้อมูลตั้งต้น 18 สัปดาห์)'
+      )
+    ) {
+      onUpdateLogs(INITIAL_18_WEEKS);
+      onShowToast('✓ โหลดข้อมูลเริ่มต้นสมุดบันทึก 18 สัปดาห์เรียบร้อยแล้ว');
+    }
   };
 
   // Photo Handlers for Weeks
@@ -270,19 +302,33 @@ export const WeeklyLogView: React.FC<WeeklyLogViewProps> = ({
     setIsPhotoModalOpen(true);
   };
 
-  const handleImageFileUpload = (e: React.ChangeEvent<HTMLInputElement>, target: 'week' | 'daily') => {
+  const handleImageFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, target: 'week' | 'daily') => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64Url = reader.result as string;
+      try {
+        const processed = await processUploadedFile(file);
         if (target === 'week') {
-          setPhotoForm((prev) => ({ ...prev, url: base64Url }));
+          setPhotoForm((prev) => ({
+            ...prev,
+            url: processed.dataUrl,
+            caption: prev.caption || processed.name,
+            fileName: processed.name,
+            fileType: processed.type,
+            fileSize: processed.size,
+          }));
         } else {
-          setDailyForm((prev) => ({ ...prev, photoUrl: base64Url }));
+          setDailyForm((prev) => ({
+            ...prev,
+            photoUrl: processed.dataUrl,
+            fileName: processed.name,
+            fileType: processed.type,
+            fileSize: processed.size,
+          }));
         }
-      };
-      reader.readAsDataURL(file);
+        onShowToast(`แนบไฟล์ ${processed.name} (${processed.size}) เรียบร้อยแล้ว`);
+      } catch (err) {
+        console.error('File process error:', err);
+      }
     }
   };
 
@@ -295,6 +341,9 @@ export const WeeklyLogView: React.FC<WeeklyLogViewProps> = ({
       url: photoForm.url.trim(),
       caption: photoForm.caption.trim() || `ภาพกิจกรรมสัปดาห์ที่ ${targetWeekForPhoto.week}`,
       uploadedAt: formatThaiDate(getTodayDateString()),
+      fileName: (photoForm as any).fileName || undefined,
+      fileType: (photoForm as any).fileType || undefined,
+      fileSize: (photoForm as any).fileSize || undefined,
     };
 
     const updatedLogs = logs.map((l) =>
@@ -304,7 +353,8 @@ export const WeeklyLogView: React.FC<WeeklyLogViewProps> = ({
     );
 
     onUpdateLogs(updatedLogs);
-    onShowToast(`เพิ่มรูปภาพในสัปดาห์ที่ ${targetWeekForPhoto.week} สำเร็จ`);
+    triggerCelebration({ count: 40, spread: 60 });
+    onShowToast(`เพิ่มรูปภาพ/ไฟล์ในสัปดาห์ที่ ${targetWeekForPhoto.week} สำเร็จ`);
     setIsPhotoModalOpen(false);
   };
 
@@ -364,19 +414,30 @@ export const WeeklyLogView: React.FC<WeeklyLogViewProps> = ({
           <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
             <button
               type="button"
+              onClick={handleResetTo18Weeks}
+              className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[13px] font-semibold transition-all cursor-pointer active:scale-95"
+              title="คืนค่าข้อมูลสมุดบันทึกเป็น 18 สัปดาห์เริ่มต้น"
+            >
+              <span className="material-symbols-outlined text-[18px]">restart_alt</span>
+              <span>คืนค่า 18 สัปดาห์</span>
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 onUpdateLogs([...logs]);
                 onShowToast('✓ บันทึกข้อมูลสมุดบันทึก 18 สัปดาห์เรียบร้อยแล้ว');
               }}
               className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[13px] font-semibold transition-all shadow-xs cursor-pointer active:scale-95"
+              title="บันทึกข้อมูลสมุดบันทึกทั้งหมด"
             >
               <span className="material-symbols-outlined text-[18px]">save</span>
-              <span>บันทึกข้อมูล</span>
+              <span>บันทึกข้อมูลทั้งหมด</span>
             </button>
             <button
               type="button"
               onClick={handleOpenAddWeek}
               className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#1e3a8a] hover:bg-[#1e40af] text-white text-[13px] font-semibold transition-all shadow-xs cursor-pointer active:scale-95"
+              title="เพิ่มสัปดาห์ใหม่"
             >
               <span className="material-symbols-outlined text-[18px]">add_circle</span>
               <span>+ เพิ่มสัปดาห์</span>
@@ -519,9 +580,9 @@ export const WeeklyLogView: React.FC<WeeklyLogViewProps> = ({
       </div>
 
       {/* 4. Weekly Log Cards List */}
-      <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {filteredLogs.length === 0 ? (
-          <div className="py-14 flex flex-col items-center justify-center text-center gap-2 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+          <div className="lg:col-span-2 py-14 flex flex-col items-center justify-center text-center gap-2 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
             <span className="material-symbols-outlined text-[40px] text-slate-300">
               edit_calendar
             </span>
@@ -696,15 +757,67 @@ export const WeeklyLogView: React.FC<WeeklyLogViewProps> = ({
                   </div>
                 )}
 
-                {/* Bottom CTA Button */}
-                <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800 text-[12px]">
-                  <span className="text-slate-400">
-                    คลิกการ์ดเพื่อเปิดดูรายละเอียดวัน เวลาทำงาน และรูปภาพ
-                  </span>
+                {/* Bottom Action Bar: เพิ่ม, แก้ไข, ลบ, บันทึก, เปิดดูรายละเอียด */}
+                <div
+                  className="pt-2.5 mt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenAddDaily(item)}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/40 text-[#1e3a8a] dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/70 text-[12px] font-semibold transition-colors cursor-pointer shadow-2xs"
+                      title="เพิ่มบันทึกการปฏิบัติงานรายวันสำหรับสัปดาห์นี้"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">add_circle</span>
+                      <span>+ เพิ่มรายวัน</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => handleOpenAddPhoto(item, e)}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-[12px] font-semibold transition-colors cursor-pointer shadow-2xs"
+                      title="เพิ่มรูปภาพกิจกรรมสำหรับสัปดาห์นี้"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">add_photo_alternate</span>
+                      <span>+ รูปภาพ</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => handleOpenEditWeek(item, e)}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 text-[12px] font-semibold transition-colors cursor-pointer shadow-2xs"
+                      title="แก้ไขข้อมูลสัปดาห์นี้"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">edit</span>
+                      <span>แก้ไข</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteWeek(item.id, item.week, e)}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/60 text-[12px] font-semibold transition-colors cursor-pointer shadow-2xs"
+                      title="ลบสัปดาห์นี้"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">delete</span>
+                      <span>ลบ</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onUpdateLogs([...logs]);
+                        onShowToast(`✓ บันทึกข้อมูลสัปดาห์ที่ ${item.week} เรียบร้อยแล้ว`);
+                      }}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[12px] font-semibold transition-colors cursor-pointer shadow-2xs active:scale-95"
+                      title="บันทึกข้อมูลสัปดาห์นี้"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">save</span>
+                      <span>บันทึก</span>
+                    </button>
+                  </div>
+
                   <button
                     type="button"
                     onClick={() => handleOpenWeekDetail(item)}
-                    className="flex items-center gap-1 font-semibold text-[#1e3a8a] dark:text-blue-300 group-hover:translate-x-0.5 transition-transform"
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#1e3a8a] text-white hover:bg-[#1e40af] text-[12px] font-semibold transition-all ml-auto shadow-2xs cursor-pointer active:scale-95"
+                    title="เปิดดูรายละเอียดสัปดาห์นี้"
                   >
                     <span>เปิดดูรายละเอียด</span>
                     <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
@@ -761,13 +874,46 @@ export const WeeklyLogView: React.FC<WeeklyLogViewProps> = ({
                 </div>
               </div>
 
-              {/* Prev / Next Week Switcher + Close */}
-              <div className="flex items-center gap-1 shrink-0">
+              {/* Top actions & Prev/Next */}
+              <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => handleOpenEditWeek(currentDetailWeek)}
+                  className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-[12px] font-semibold transition-colors cursor-pointer"
+                  title="แก้ไขข้อมูลสัปดาห์นี้"
+                >
+                  <span className="material-symbols-outlined text-[16px]">edit</span>
+                  <span>แก้ไขสัปดาห์</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => handleDeleteWeek(currentDetailWeek.id, currentDetailWeek.week, e)}
+                  className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 text-[12px] font-semibold transition-colors cursor-pointer"
+                  title="ลบสัปดาห์นี้"
+                >
+                  <span className="material-symbols-outlined text-[16px]">delete</span>
+                  <span>ลบสัปดาห์</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onUpdateLogs([...logs]);
+                    onShowToast(`✓ บันทึกข้อมูลสัปดาห์ที่ ${currentDetailWeek.week} เรียบร้อยแล้ว`);
+                  }}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[12px] font-semibold transition-colors cursor-pointer shadow-2xs"
+                  title="บันทึกข้อมูลสัปดาห์นี้"
+                >
+                  <span className="material-symbols-outlined text-[16px]">save</span>
+                  <span>บันทึก</span>
+                </button>
+
+                <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1 hidden sm:block" />
+
                 <button
                   type="button"
                   onClick={() => handleNavigateWeek('prev')}
                   title="สัปดาห์ก่อนหน้า"
-                  className="p-2 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-[18px]">chevron_left</span>
                 </button>
@@ -775,15 +921,14 @@ export const WeeklyLogView: React.FC<WeeklyLogViewProps> = ({
                   type="button"
                   onClick={() => handleNavigateWeek('next')}
                   title="สัปดาห์ถัดไป"
-                  className="p-2 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-[18px]">chevron_right</span>
                 </button>
-                <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1" />
                 <button
                   type="button"
                   onClick={() => setDetailWeek(null)}
-                  className="p-2 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-[20px]">close</span>
                 </button>
@@ -924,20 +1069,21 @@ export const WeeklyLogView: React.FC<WeeklyLogViewProps> = ({
                           <div className="flex items-center gap-1.5">
                             <button
                               type="button"
-                              onClick={() => handleOpenEditDaily(daily)}
-                              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/40 dark:hover:bg-blue-900/60 text-[#1e3a8a] dark:text-blue-300 text-[11px] font-semibold transition-colors cursor-pointer"
-                              title="แก้ไขและบันทึกข้อมูลรายวัน"
+                              onClick={() => handleOpenEditDaily(daily, currentDetailWeek)}
+                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/40 dark:hover:bg-blue-900/60 text-[#1e3a8a] dark:text-blue-300 text-[11px] font-semibold transition-colors cursor-pointer"
+                              title="แก้ไขบันทึกประจำวันนี้"
                             >
-                              <span className="material-symbols-outlined text-[14px]">edit_note</span>
-                              <span>แก้ไขข้อมูล</span>
+                              <span className="material-symbols-outlined text-[15px]">edit_note</span>
+                              <span>แก้ไข</span>
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleDeleteDaily(daily.id)}
+                              onClick={() => handleDeleteDaily(daily.id, currentDetailWeek.id)}
                               title="ลบบันทึกวันนี้"
-                              className="p-1 text-slate-400 hover:text-red-500 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 text-[11px] font-semibold transition-colors cursor-pointer"
                             >
-                              <span className="material-symbols-outlined text-[16px]">delete</span>
+                              <span className="material-symbols-outlined text-[15px]">delete</span>
+                              <span>ลบ</span>
                             </button>
                           </div>
                         </div>
@@ -989,9 +1135,9 @@ export const WeeklyLogView: React.FC<WeeklyLogViewProps> = ({
               </div>
             </div>
 
-            {/* Modal Bottom Bar */}
+            {/* Modal Bottom Bar: เพิ่ม, แก้ไข, ลบ, บันทึก, ปิด */}
             <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap bg-slate-50/50 dark:bg-slate-800/40">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <button
                   type="button"
                   onClick={() => handleOpenAddDaily(currentDetailWeek)}
@@ -1008,6 +1154,22 @@ export const WeeklyLogView: React.FC<WeeklyLogViewProps> = ({
                   <span className="material-symbols-outlined text-[16px]">add_photo_alternate</span>
                   <span>+ เพิ่มรูปภาพ</span>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => handleOpenEditWeek(currentDetailWeek)}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[12px] font-semibold transition-colors cursor-pointer shadow-xs"
+                >
+                  <span className="material-symbols-outlined text-[16px]">edit</span>
+                  <span>แก้ไขสัปดาห์</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => handleDeleteWeek(currentDetailWeek.id, currentDetailWeek.week, e)}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 text-[12px] font-semibold transition-colors cursor-pointer shadow-xs"
+                >
+                  <span className="material-symbols-outlined text-[16px]">delete</span>
+                  <span>ลบสัปดาห์</span>
+                </button>
               </div>
 
               <div className="flex items-center gap-2">
@@ -1017,10 +1179,10 @@ export const WeeklyLogView: React.FC<WeeklyLogViewProps> = ({
                     onUpdateLogs([...logs]);
                     onShowToast(`✓ บันทึกข้อมูลสัปดาห์ที่ ${currentDetailWeek.week} เรียบร้อยแล้ว`);
                   }}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[12px] font-semibold transition-all cursor-pointer shadow-xs active:scale-95"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[12px] font-semibold transition-all cursor-pointer shadow-xs active:scale-95"
                 >
                   <span className="material-symbols-outlined text-[16px]">save</span>
-                  <span>บันทึกข้อมูล</span>
+                  <span>บันทึกข้อมูลสัปดาห์</span>
                 </button>
                 <button
                   type="button"
@@ -1238,21 +1400,36 @@ export const WeeklyLogView: React.FC<WeeklyLogViewProps> = ({
               </div>
 
               {/* Form Buttons */}
-              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsDailyModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[13px] font-medium transition-colors cursor-pointer"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  type="submit"
-                  className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[13px] font-semibold transition-all shadow-xs cursor-pointer active:scale-95"
-                >
-                  <span className="material-symbols-outlined text-[18px]">save</span>
-                  <span>บันทึกข้อมูลรายวัน</span>
-                </button>
+              <div className="flex items-center justify-between gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                {editingDaily ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleDeleteDaily(editingDaily.id, targetWeekForDaily?.id || currentDetailWeek?.id);
+                      setIsDailyModalOpen(false);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 text-[13px] font-semibold transition-colors cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">delete</span>
+                    <span>ลบบันทึกนี้</span>
+                  </button>
+                ) : <div />}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsDailyModalOpen(false)}
+                    className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[13px] font-medium transition-colors cursor-pointer"
+                  >
+                    ยกเลิก
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[13px] font-semibold transition-all shadow-xs cursor-pointer active:scale-95"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">save</span>
+                    <span>บันทึกข้อมูลรายวัน</span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -1499,20 +1676,36 @@ export const WeeklyLogView: React.FC<WeeklyLogViewProps> = ({
               </div>
 
               {/* Form Buttons */}
-              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsWeekModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[13px] font-medium transition-colors cursor-pointer"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#1e3a8a] hover:bg-[#1e40af] text-white text-[13px] font-semibold transition-all shadow-xs cursor-pointer active:scale-95"
-                >
-                  บันทึกข้อมูล
-                </button>
+              <div className="flex items-center justify-between gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                {editingWeek ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      handleDeleteWeek(editingWeek.id, editingWeek.week, e);
+                      setIsWeekModalOpen(false);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 text-[13px] font-semibold transition-colors cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">delete</span>
+                    <span>ลบสัปดาห์นี้</span>
+                  </button>
+                ) : <div />}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsWeekModalOpen(false)}
+                    className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[13px] font-medium transition-colors cursor-pointer"
+                  >
+                    ยกเลิก
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[13px] font-semibold transition-all shadow-xs cursor-pointer active:scale-95"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">save</span>
+                    <span>บันทึกข้อมูลสัปดาห์</span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>

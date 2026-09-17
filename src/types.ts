@@ -35,6 +35,9 @@ export interface SchoolPhoto {
   category: 'อาคารสถานที่' | 'บรรยากาศการสอน' | 'กิจกรรมโรงเรียน' | 'สิ่งอำนวยความสะดวก';
   uploadedAt: string;
   caption?: string;
+  fileType?: string; // 'application/pdf' or image mime
+  fileName?: string;
+  fileSize?: string;
 }
 
 export interface SchoolDetails {
@@ -67,6 +70,9 @@ export interface DailyWorkRecord {
   activities: string; // รายละเอียดว่าวันนี้ทำอะไร
   notes?: string; // บันทึกเพิ่มเติม / ปัญหา / ข้อสังเกต
   photoUrl?: string; // รูปถ่ายกิจกรรมประจำวัน
+  fileName?: string;
+  fileType?: string;
+  fileSize?: string;
 }
 
 export interface WeekPhoto {
@@ -74,6 +80,9 @@ export interface WeekPhoto {
   url: string;
   caption?: string;
   uploadedAt?: string;
+  fileName?: string;
+  fileType?: string;
+  fileSize?: string;
 }
 
 export interface WeeklyLogItem {

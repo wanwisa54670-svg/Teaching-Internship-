@@ -109,11 +109,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
       </div>
 
       {/* Progress Cards Grid with Edit trigger */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Card 1: Weekly Progress */}
         <div
           onClick={onNavigateToWeekly}
-          className={`p-4 rounded-2xl border shadow-xs flex flex-col justify-between cursor-pointer transition-all hover:border-[#1e3a8a]/40 ${
+          className={`p-4 rounded-2xl border shadow-xs flex flex-col justify-between cursor-pointer transition-all hover:border-[#1e3a8a]/40 hover:shadow-sm ${
             isDark ? 'bg-[#18233c] border-slate-800' : 'bg-white border-slate-100'
           }`}
         >
@@ -152,7 +152,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             setStatsForm(stats);
             setIsEditStatsOpen(true);
           }}
-          className={`p-4 rounded-2xl border shadow-xs flex flex-col justify-between cursor-pointer transition-all hover:border-[#006398]/40 ${
+          className={`p-4 rounded-2xl border shadow-xs flex flex-col justify-between cursor-pointer transition-all hover:border-[#006398]/40 hover:shadow-sm ${
             isDark ? 'bg-[#18233c] border-slate-800' : 'bg-white border-slate-100'
           }`}
         >
@@ -184,21 +184,89 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Card 3: Lesson Plans */}
+        <div
+          onClick={onNavigateToAcademics}
+          className={`p-4 rounded-2xl border shadow-xs flex flex-col justify-between cursor-pointer transition-all hover:border-amber-500/40 hover:shadow-sm ${
+            isDark ? 'bg-[#18233c] border-slate-800' : 'bg-white border-slate-100'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[12px] font-semibold text-slate-500 dark:text-slate-400">
+              แผนการจัดการเรียนรู้
+            </span>
+            <span className="material-symbols-outlined text-amber-600 text-[20px]">
+              description
+            </span>
+          </div>
+          <div className="mt-2">
+            <div className="flex items-baseline justify-between">
+              <span className="text-[22px] font-bold text-amber-600 dark:text-amber-400">
+                {stats.plansSubmitted}{' '}
+                <span className="text-[13px] font-normal text-slate-400">
+                  / {stats.plansTotal} แผน
+                </span>
+              </span>
+              <span className="text-[11px] font-bold text-emerald-600">
+                {plansPercent}%
+              </span>
+            </div>
+            <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full mt-1.5 overflow-hidden">
+              <div
+                className="h-full bg-amber-500 rounded-full transition-all duration-500"
+                style={{ width: `${plansPercent}%` }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Card 4: Evaluation & Practicum Status */}
+        <div
+          onClick={onNavigateToSettings}
+          className={`p-4 rounded-2xl border shadow-xs flex flex-col justify-between cursor-pointer transition-all hover:border-emerald-500/40 hover:shadow-sm ${
+            isDark ? 'bg-[#18233c] border-slate-800' : 'bg-white border-slate-100'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[12px] font-semibold text-slate-500 dark:text-slate-400">
+              สถานะการประเมินผล
+            </span>
+            <span className="material-symbols-outlined text-emerald-600 text-[20px]">
+              verified
+            </span>
+          </div>
+          <div className="mt-2">
+            <div className="flex items-baseline justify-between">
+              <span className="text-[19px] sm:text-[20px] font-bold text-emerald-600 dark:text-emerald-400 truncate">
+                ผ่านเกณฑ์มาตรฐาน
+              </span>
+              <span className="text-[11px] font-bold text-emerald-600">
+                100%
+              </span>
+            </div>
+            <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full mt-1.5 overflow-hidden">
+              <div className="h-full bg-emerald-500 rounded-full w-full" />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Quick Navigation Action Pills */}
-      <div className="grid grid-cols-3 gap-2 text-[12px]">
+      <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 text-[12px]">
         <button
           type="button"
-          onClick={onNavigateToSchool}
+          onClick={onNavigateToWeekly}
           className={`p-2.5 rounded-xl border flex flex-col items-center gap-1 font-semibold transition-all hover:shadow-xs cursor-pointer ${
             isDark
               ? 'bg-[#18233c] border-slate-800 text-slate-200 hover:bg-slate-800'
               : 'bg-white border-slate-100 text-[#1e3a8a] hover:bg-blue-50/50'
           }`}
         >
-          <span className="material-symbols-outlined text-[20px] text-[#006398]">domain</span>
-          <span className="text-[11px]">สถานศึกษา & รูป</span>
+          <span className="material-symbols-outlined text-[20px] text-emerald-600">
+            assignment_turned_in
+          </span>
+          <span className="text-[11px]">บันทึก 18 สัปดาห์</span>
         </button>
 
         <button
@@ -216,110 +284,184 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
         <button
           type="button"
-          onClick={onNavigateToWeekly}
+          onClick={onNavigateToSchool}
           className={`p-2.5 rounded-xl border flex flex-col items-center gap-1 font-semibold transition-all hover:shadow-xs cursor-pointer ${
             isDark
               ? 'bg-[#18233c] border-slate-800 text-slate-200 hover:bg-slate-800'
               : 'bg-white border-slate-100 text-[#1e3a8a] hover:bg-blue-50/50'
           }`}
         >
-          <span className="material-symbols-outlined text-[20px] text-emerald-600">
-            assignment_turned_in
-          </span>
-          <span className="text-[11px]">บันทึก 18 สัปดาห์</span>
+          <span className="material-symbols-outlined text-[20px] text-[#006398]">domain</span>
+          <span className="text-[11px]">สถานศึกษา & รูป</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={onNavigateToSettings}
+          className={`p-2.5 rounded-xl border flex flex-col items-center gap-1 font-semibold transition-all hover:shadow-xs cursor-pointer ${
+            isDark
+              ? 'bg-[#18233c] border-slate-800 text-slate-200 hover:bg-slate-800'
+              : 'bg-white border-slate-100 text-[#1e3a8a] hover:bg-blue-50/50'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[20px] text-purple-600">badge</span>
+          <span className="text-[11px]">บัตรประจำตัวครู</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setStatsForm(stats);
+            setIsEditStatsOpen(true);
+          }}
+          className={`p-2.5 rounded-xl border flex flex-col items-center gap-1 font-semibold transition-all hover:shadow-xs cursor-pointer col-span-2 sm:col-span-1 ${
+            isDark
+              ? 'bg-[#18233c] border-slate-800 text-slate-200 hover:bg-slate-800'
+              : 'bg-white border-slate-100 text-[#1e3a8a] hover:bg-blue-50/50'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[20px] text-blue-600">tune</span>
+          <span className="text-[11px]">ปรับแก้สถิติ</span>
         </button>
       </div>
 
-      {/* Section: Overview of Teacher Practicum Report */}
-      <div
-        className={`p-4 sm:p-5 rounded-2xl border shadow-xs flex flex-col gap-3.5 ${
-          isDark ? 'bg-[#18233c] border-slate-800' : 'bg-white border-slate-100'
-        }`}
-      >
-        <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[#1e3a8a] dark:text-blue-300 text-[22px]">
-              menu_book
-            </span>
-            <h4 className="text-[15px] font-bold">
-              รายงานการฝึกสอนประสบการณ์วิชาชีพครู
-            </h4>
+      {/* Website Desktop Bento Grid: Left (8 cols) & Right (4 cols) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        {/* Left Column (8 cols): Overview of Teacher Practicum Report */}
+        <div className="lg:col-span-8 flex flex-col gap-4">
+          <div
+            className={`p-4 sm:p-5 rounded-2xl border shadow-xs flex flex-col gap-3.5 ${
+              isDark ? 'bg-[#18233c] border-slate-800' : 'bg-white border-slate-100'
+            }`}
+          >
+            <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#1e3a8a] dark:text-blue-300 text-[22px]">
+                  menu_book
+                </span>
+                <h4 className="text-[15px] font-bold">
+                  รายงานการฝึกสอนประสบการณ์วิชาชีพครู
+                </h4>
+              </div>
+              <span className="text-[11px] px-2.5 py-0.5 rounded-full font-semibold bg-blue-50 text-[#1e3a8a] dark:bg-blue-950/60 dark:text-blue-300">
+                {profile.term}
+              </span>
+            </div>
+
+            {/* Practicum Key Details */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-[12.5px]">
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 flex items-start gap-2.5">
+                <span className="material-symbols-outlined text-[18px] text-[#1e3a8a] dark:text-blue-300 shrink-0 mt-0.5">
+                  school
+                </span>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[11px] text-slate-400 font-medium">สถานศึกษาที่ปฏิบัติการสอน</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-100 truncate">
+                    {profile.schoolName}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 flex items-start gap-2.5">
+                <span className="material-symbols-outlined text-[18px] text-[#006398] dark:text-sky-300 shrink-0 mt-0.5">
+                  class
+                </span>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[11px] text-slate-400 font-medium">สาขาวิชา / กลุ่มสาระ</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-100 truncate">
+                    {profile.major} • {profile.department}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 flex items-start gap-2.5">
+                <span className="material-symbols-outlined text-[18px] text-emerald-600 shrink-0 mt-0.5">
+                  event_available
+                </span>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[11px] text-slate-400 font-medium">ความคืบหน้ารวม</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-100">
+                    สัปดาห์ที่ {stats.currentWeek} จากทั้งหมด {stats.totalWeeks} สัปดาห์ ({weekPercent}%)
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 flex items-start gap-2.5">
+                <span className="material-symbols-outlined text-[18px] text-amber-600 shrink-0 mt-0.5">
+                  description
+                </span>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[11px] text-slate-400 font-medium">แผนการจัดการเรียนรู้</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-100">
+                    บันทึกแล้ว {stats.plansSubmitted} จาก {stats.plansTotal} แผน ({plansPercent}%)
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Action button to weekly log */}
+            <div className="pt-1 flex gap-2">
+              <button
+                type="button"
+                onClick={onNavigateToWeekly}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-[#1e3a8a] hover:bg-[#1e40af] text-white text-[13px] font-semibold flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-95"
+              >
+                <span className="material-symbols-outlined text-[18px]">calendar_month</span>
+                <span>เปิดสมุดบันทึก 18 สัปดาห์</span>
+              </button>
+              <button
+                type="button"
+                onClick={onNavigateToSchool}
+                className="py-2.5 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[13px] font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                title="ดูข้อมูลสถานศึกษาและคลังรูปภาพ"
+              >
+                <span className="material-symbols-outlined text-[18px]">photo_library</span>
+                <span>รูปสถานศึกษา</span>
+              </button>
+            </div>
           </div>
-          <span className="text-[11px] px-2.5 py-0.5 rounded-full font-semibold bg-blue-50 text-[#1e3a8a] dark:bg-blue-950/60 dark:text-blue-300">
-            {profile.term}
-          </span>
         </div>
 
-        {/* Practicum Key Details */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-[12.5px]">
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 flex items-start gap-2.5">
-            <span className="material-symbols-outlined text-[18px] text-[#1e3a8a] dark:text-blue-300 shrink-0 mt-0.5">
-              school
-            </span>
-            <div className="flex flex-col min-w-0">
-              <span className="text-[11px] text-slate-400 font-medium">สถานศึกษาที่ปฏิบัติการสอน</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-100 truncate">
-                {profile.schoolName}
-              </span>
-            </div>
-          </div>
-
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 flex items-start gap-2.5">
-            <span className="material-symbols-outlined text-[18px] text-[#006398] dark:text-sky-300 shrink-0 mt-0.5">
-              class
-            </span>
-            <div className="flex flex-col min-w-0">
-              <span className="text-[11px] text-slate-400 font-medium">สาขาวิชา / กลุ่มสาระ</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-100 truncate">
-                {profile.major} • {profile.department}
-              </span>
-            </div>
-          </div>
-
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 flex items-start gap-2.5">
-            <span className="material-symbols-outlined text-[18px] text-emerald-600 shrink-0 mt-0.5">
-              event_available
-            </span>
-            <div className="flex flex-col min-w-0">
-              <span className="text-[11px] text-slate-400 font-medium">ความคืบหน้ารวม</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-100">
-                สัปดาห์ที่ {stats.currentWeek} จากทั้งหมด {stats.totalWeeks} สัปดาห์ ({weekPercent}%)
-              </span>
-            </div>
-          </div>
-
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 flex items-start gap-2.5">
-            <span className="material-symbols-outlined text-[18px] text-amber-600 shrink-0 mt-0.5">
-              description
-            </span>
-            <div className="flex flex-col min-w-0">
-              <span className="text-[11px] text-slate-400 font-medium">แผนการจัดการเรียนรู้</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-100">
-                บันทึกแล้ว {stats.plansSubmitted} จาก {stats.plansTotal} แผน ({plansPercent}%)
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Action button to weekly log */}
-        <div className="pt-1 flex gap-2">
-          <button
-            type="button"
-            onClick={onNavigateToWeekly}
-            className="flex-1 py-2.5 px-4 rounded-xl bg-[#1e3a8a] hover:bg-[#1e40af] text-white text-[13px] font-semibold flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-95"
+        {/* Right Column (4 cols): Faculty standards & Quick Info Card */}
+        <div className="lg:col-span-4 flex flex-col gap-4">
+          <div
+            className={`p-4 sm:p-5 rounded-2xl border shadow-xs flex flex-col gap-3 ${
+              isDark ? 'bg-[#18233c] border-slate-800' : 'bg-white border-slate-100'
+            }`}
           >
-            <span className="material-symbols-outlined text-[18px]">calendar_month</span>
-            <span>เปิดสมุดบันทึก 18 สัปดาห์</span>
-          </button>
-          <button
-            type="button"
-            onClick={onNavigateToSchool}
-            className="py-2.5 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[13px] font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-            title="ดูข้อมูลสถานศึกษาและคลังรูปภาพ"
-          >
-            <span className="material-symbols-outlined text-[18px]">photo_library</span>
-            <span>รูปสถานศึกษา</span>
-          </button>
+            <div className="flex items-center gap-2 pb-1 border-b border-slate-100 dark:border-slate-800">
+              <span className="material-symbols-outlined text-[#1e3a8a] dark:text-blue-300 text-[20px]">
+                verified
+              </span>
+              <h4 className="text-[14px] font-bold">ข้อมูลการนิเทศและมาตรฐาน</h4>
+            </div>
+
+            <div className="flex flex-col gap-2.5 text-[12px]">
+              <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60">
+                <span className="text-slate-400 block text-[10.5px]">อาจารย์นิเทศก์ประจำกลุ่ม</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-100">
+                  {profile.supervisorName || 'ผศ.ดร.สมเกียรติ สว่างวงศ์'}
+                </span>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60">
+                <span className="text-slate-400 block text-[10.5px]">ครูพี่เลี้ยงประจำโรงเรียน</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-100">
+                  {profile.mentorName || 'อาจารย์ศิริพร บุญยืน'}
+                </span>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/50">
+                <div className="flex items-center gap-1.5 text-emerald-800 dark:text-emerald-300 font-semibold text-[11.5px]">
+                  <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                  <span>สถานะบันทึกออนไลน์</span>
+                </div>
+                <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5">
+                  ข้อมูลทั้งหมดบันทึกในเครื่องอัตโนมัติ พร้อมส่งออกไฟล์สำรองได้ตลอดเวลา
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

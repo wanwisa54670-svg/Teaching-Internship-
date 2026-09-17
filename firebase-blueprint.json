@@ -1,0 +1,105 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile information and settings for teacher trainee",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "name": { "type": "string", "maxLength": 150 },
+        "email": { "type": "string", "format": "email", "maxLength": 150 },
+        "studentId": { "type": "string", "maxLength": 50 },
+        "status": { "type": "string", "maxLength": 50 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "subjectGroup": { "type": "string", "maxLength": 100 },
+        "schoolName": { "type": "string", "maxLength": 150 },
+        "educationLevel": { "type": "string", "maxLength": 100 },
+        "term": { "type": "string", "maxLength": 50 },
+        "avatarUrl": { "type": "string", "maxLength": 1500 },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId", "name", "email"]
+    },
+    "WeeklyLog": {
+      "title": "WeeklyLog",
+      "description": "Weekly teaching practicum log entry",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner UID" },
+        "week": { "type": "number" },
+        "title": { "type": "string", "maxLength": 200 },
+        "hours": { "type": "number" },
+        "dateRange": { "type": "string", "maxLength": 100 },
+        "reflection": { "type": "string", "maxLength": 5000 },
+        "mentorFeedback": { "type": "string", "maxLength": 3000 },
+        "photos": { "type": "array" },
+        "dailyLogs": { "type": "array" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId", "week", "title"]
+    },
+    "AcademicItem": {
+      "title": "AcademicItem",
+      "description": "Academic item such as lesson plan, CAR research or teaching schedule",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner UID" },
+        "title": { "type": "string", "maxLength": 200 },
+        "desc": { "type": "string", "maxLength": 1000 },
+        "count": { "type": "string", "maxLength": 50 },
+        "icon": { "type": "string", "maxLength": 50 },
+        "category": { "type": "string", "maxLength": 50 },
+        "status": { "type": "string", "maxLength": 50 },
+        "fileName": { "type": "string", "maxLength": 255 },
+        "fileUrl": { "type": "string", "maxLength": 2000000 },
+        "fileSize": { "type": "string", "maxLength": 50 },
+        "fileType": { "type": "string", "maxLength": 100 },
+        "scheduleImageUrl": { "type": "string", "maxLength": 2000000 },
+        "scheduleImageName": { "type": "string", "maxLength": 255 },
+        "supervisionDate": { "type": "string", "maxLength": 50 },
+        "supervisorName": { "type": "string", "maxLength": 150 },
+        "supervisionDetails": { "type": "string", "maxLength": 3000 },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId", "title", "category"]
+    },
+    "SchoolPhotoItem": {
+      "title": "SchoolPhotoItem",
+      "description": "School atmosphere and activity gallery photo or document",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner UID" },
+        "url": { "type": "string", "maxLength": 2000000 },
+        "title": { "type": "string", "maxLength": 200 },
+        "category": { "type": "string", "maxLength": 100 },
+        "caption": { "type": "string", "maxLength": 1000 },
+        "fileType": { "type": "string", "maxLength": 50 },
+        "fileName": { "type": "string", "maxLength": 255 },
+        "uploadedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["userId", "url", "title"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile and practicum credentials"
+    },
+    "/users/{userId}/weekly_logs/{logId}": {
+      "schema": "WeeklyLog",
+      "description": "Teaching practicum 18 weekly log entries"
+    },
+    "/users/{userId}/academic_items/{itemId}": {
+      "schema": "AcademicItem",
+      "description": "Academic files, lesson plans and CAR research"
+    },
+    "/users/{userId}/school_photos/{photoId}": {
+      "schema": "SchoolPhotoItem",
+      "description": "School and activity gallery photos"
+    },
+    "/test/{testId}": {
+      "schema": "UserProfile",
+      "description": "Connection test doc"
+    }
+  }
+}

@@ -1,10 +1,12 @@
 import React, { useState, useRef } from 'react';
 import { SchoolDetails, SchoolPhoto } from '../../types';
+import { processUploadedFile, triggerCelebration } from '../../lib/fileHelper';
 
 interface SchoolViewProps {
   schoolInfo: SchoolDetails;
   onUpdateSchoolInfo: (updated: SchoolDetails) => void;
   onShowToast: (msg: string) => void;
+  onPreviewFile?: (url: string, name: string, type?: string, size?: string) => void;
   isDark?: boolean;
 }
 
@@ -12,6 +14,7 @@ export const SchoolView: React.FC<SchoolViewProps> = ({
   schoolInfo,
   onUpdateSchoolInfo,
   onShowToast,
+  onPreviewFile,
   isDark = false,
 }) => {
   // Category filter for photos
@@ -146,36 +149,33 @@ export const SchoolView: React.FC<SchoolViewProps> = ({
     setIsAddPhotoOpen(true);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (!file.type.startsWith('image/')) {
-        setUploadError('กรุณาเลือกไฟล์ภาพเท่านั้น');
-        return;
+      try {
+        const processed = await processUploadedFile(file);
+        setPhotoForm((prev) => ({
+          ...prev,
+          url: processed.dataUrl,
+          title: prev.title || processed.name.replace(/\.[^/.]+$/, ''),
+          caption: prev.caption || `เอกสาร/ภาพ: ${processed.name}`,
+          fileName: processed.name,
+          fileType: processed.type,
+          fileSize: processed.size,
+        } as any));
+        setUploadError(null);
+        onShowToast(`แนบไฟล์ ${processed.name} (${processed.size}) สำเร็จ`);
+      } catch (err: unknown) {
+        console.error('File process error:', err);
+        setUploadError(err instanceof Error ? err.message : 'ไม่สามารถประมวลผลไฟล์ได้');
       }
-      if (file.size > 10 * 1024 * 1024) {
-        setUploadError('ไฟล์มีขนาดเกิน 10MB กรุณาเลือกไฟล์ที่เล็กลง');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (typeof event.target?.result === 'string') {
-          setPhotoForm((prev) => ({
-            ...prev,
-            url: event.target!.result as string,
-            title: prev.title || file.name.replace(/\.[^/.]+$/, ''),
-          }));
-          setUploadError(null);
-        }
-      };
-      reader.readAsDataURL(file);
     }
   };
 
   const handleSavePhoto = (e: React.FormEvent) => {
     e.preventDefault();
     if (!photoForm.url.trim()) {
-      setUploadError('กรุณาเลือกหรือใส่ลิงก์รูปภาพ');
+      setUploadError('กรุณาเลือกหรือใส่ลิงก์รูปภาพ / ไฟล์ PDF');
       return;
     }
 
@@ -189,11 +189,15 @@ export const SchoolView: React.FC<SchoolViewProps> = ({
               url: photoForm.url,
               category: photoForm.category,
               caption: photoForm.caption,
+              fileName: (photoForm as any).fileName || p.fileName,
+              fileType: (photoForm as any).fileType || p.fileType,
+              fileSize: (photoForm as any).fileSize || p.fileSize,
             }
           : p
       );
       onUpdateSchoolInfo({ ...schoolInfo, photos: updatedPhotos });
-      onShowToast('แก้ไขข้อมูลรูปภาพสำเร็จ');
+      triggerCelebration({ count: 40, spread: 60 });
+      onShowToast('แก้ไขข้อมูลรูปภาพ/ไฟล์สำเร็จ');
     } else {
       // Add new photo
       const newPhoto: SchoolPhoto = {
@@ -203,12 +207,16 @@ export const SchoolView: React.FC<SchoolViewProps> = ({
         category: photoForm.category,
         caption: photoForm.caption,
         uploadedAt: 'วันนี้',
+        fileName: (photoForm as any).fileName || undefined,
+        fileType: (photoForm as any).fileType || undefined,
+        fileSize: (photoForm as any).fileSize || undefined,
       };
       onUpdateSchoolInfo({
         ...schoolInfo,
         photos: [newPhoto, ...schoolInfo.photos],
       });
-      onShowToast('เพิ่มรูปสถานศึกษาเรียบร้อยแล้ว');
+      triggerCelebration({ count: 50, spread: 70 });
+      onShowToast('เพิ่มรูปภาพ/เอกสารสถานศึกษาเรียบร้อยแล้ว');
     }
 
     setIsAddPhotoOpen(false);
@@ -257,14 +265,28 @@ export const SchoolView: React.FC<SchoolViewProps> = ({
               </span>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={handleOpenEditInfo}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#1e3a8a] hover:bg-[#1e40af] text-white text-[12px] font-semibold transition-all cursor-pointer shadow-xs active:scale-95"
-          >
-            <span className="material-symbols-outlined text-[16px]">edit</span>
-            <span>แก้ไขข้อมูล</span>
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => {
+                onUpdateSchoolInfo({ ...schoolInfo });
+                onShowToast('✓ บันทึกข้อมูลสถานศึกษาเรียบร้อยแล้ว');
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[12px] font-semibold transition-all cursor-pointer shadow-xs active:scale-95"
+              title="บันทึกข้อมูลสถานศึกษา"
+            >
+              <span className="material-symbols-outlined text-[16px]">save</span>
+              <span>บันทึก</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleOpenEditInfo}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#1e3a8a] hover:bg-[#1e40af] text-white text-[12px] font-semibold transition-all cursor-pointer shadow-xs active:scale-95"
+            >
+              <span className="material-symbols-outlined text-[16px]">edit</span>
+              <span>แก้ไขข้อมูล</span>
+            </button>
+          </div>
         </div>
 
         {/* Quick info badges */}
@@ -539,31 +561,39 @@ export const SchoolView: React.FC<SchoolViewProps> = ({
                 key={photo.id}
                 className="group relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 aspect-4/3 bg-slate-100 dark:bg-slate-800/80 shadow-xs transition-all hover:shadow-md"
               >
-                <img
-                  src={photo.url}
-                  alt={photo.title}
-                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  loading="lazy"
-                />
+                {photo.fileType === 'application/pdf' || photo.url.startsWith('data:application/pdf') ? (
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-rose-50 dark:bg-rose-950/30 text-rose-600 p-4">
+                    <span className="material-symbols-outlined text-[44px]">picture_as_pdf</span>
+                    <span className="text-[11px] font-bold mt-1 text-center line-clamp-1">{photo.fileName || 'เอกสาร PDF'}</span>
+                  </div>
+                ) : (
+                  <img
+                    src={photo.url}
+                    alt={photo.title}
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    loading="lazy"
+                  />
+                )}
 
                 {/* Gradient shade */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80 group-hover:opacity-95 transition-opacity" />
 
                 {/* Category badge */}
-                <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/50 backdrop-blur-xs text-white text-[10px] font-medium">
-                  {photo.category}
+                <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/50 backdrop-blur-xs text-white text-[10px] font-medium flex items-center gap-1">
+                  {photo.fileType === 'application/pdf' ? '📄 เอกสาร' : photo.category}
                 </span>
 
-                {/* Quick actions top-right */}
-                <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* Quick actions top-right: visible on mobile, hover on desktop */}
+                <div className="absolute top-2 right-2 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleOpenEditPhoto(photo);
                     }}
-                    title="แก้ไขชื่อ/หมวดหมู่"
-                    className="w-7 h-7 rounded-lg bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow-xs cursor-pointer"
+                    title="แก้ไขรูปนี้"
+                    className="w-7 h-7 rounded-lg bg-white/95 hover:bg-white text-slate-800 flex items-center justify-center shadow-xs cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-[14px]">edit</span>
                   </button>
@@ -574,7 +604,7 @@ export const SchoolView: React.FC<SchoolViewProps> = ({
                       handleDeletePhoto(photo.id);
                     }}
                     title="ลบรูปนี้"
-                    className="w-7 h-7 rounded-lg bg-red-600/90 hover:bg-red-600 text-white flex items-center justify-center shadow-xs cursor-pointer"
+                    className="w-7 h-7 rounded-lg bg-red-600/95 hover:bg-red-600 text-white flex items-center justify-center shadow-xs cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-[14px]">delete</span>
                   </button>
@@ -583,7 +613,13 @@ export const SchoolView: React.FC<SchoolViewProps> = ({
                 {/* Bottom caption & click to view */}
                 <button
                   type="button"
-                  onClick={() => setSelectedPhoto(photo)}
+                  onClick={() => {
+                    if (onPreviewFile) {
+                      onPreviewFile(photo.url, photo.title, photo.fileType, photo.fileSize);
+                    } else {
+                      setSelectedPhoto(photo);
+                    }
+                  }}
                   className="absolute bottom-0 inset-x-0 p-2.5 text-left text-white flex flex-col justify-end cursor-pointer"
                 >
                   <span className="text-[12px] font-bold leading-tight truncate">
@@ -594,8 +630,9 @@ export const SchoolView: React.FC<SchoolViewProps> = ({
                       {photo.caption}
                     </span>
                   )}
-                  <span className="text-[9px] text-white/60 mt-0.5">
-                    แตะเพื่อดูภาพขนาดเต็ม
+                  <span className="text-[9px] text-white/60 mt-0.5 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[11px]">visibility</span>
+                    แตะเพื่อดูแบบเต็มจอ
                   </span>
                 </button>
               </div>
@@ -1030,20 +1067,37 @@ export const SchoolView: React.FC<SchoolViewProps> = ({
                 />
               </div>
 
-              <div className="pt-2 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsAddPhotoOpen(false)}
-                  className="flex-1 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-[13px] cursor-pointer"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 h-10 rounded-xl bg-[#004a31] hover:bg-[#005f3f] text-white font-semibold text-[13px] shadow-xs cursor-pointer"
-                >
-                  {editingPhoto ? 'บันทึกการแก้ไข' : 'เพิ่มรูปภาพ'}
-                </button>
+              <div className="pt-2 flex items-center justify-between gap-3">
+                {editingPhoto ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleDeletePhoto(editingPhoto.id);
+                      setIsAddPhotoOpen(false);
+                    }}
+                    className="h-10 px-3.5 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 font-semibold text-[13px] cursor-pointer flex items-center gap-1.5 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">delete</span>
+                    <span>ลบรูปภาพนี้</span>
+                  </button>
+                ) : <div />}
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddPhotoOpen(false)}
+                    className="h-10 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-[13px] cursor-pointer"
+                  >
+                    ยกเลิก
+                  </button>
+                  <button
+                    type="submit"
+                    className="h-10 px-5 rounded-xl bg-[#004a31] hover:bg-[#005f3f] text-white font-semibold text-[13px] shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">save</span>
+                    <span>{editingPhoto ? 'บันทึกการแก้ไข' : 'เพิ่มรูปภาพ'}</span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>

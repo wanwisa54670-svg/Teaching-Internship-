@@ -29,7 +29,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   return (
     <nav
       id="bottomNavigation"
-      className={`fixed bottom-0 left-0 right-0 w-full z-40 pb-safe transition-colors duration-200 border-t ${
+      className={`fixed bottom-0 left-0 right-0 w-full z-40 pb-safe transition-colors duration-200 border-t md:hidden ${
         isDark
           ? 'bg-[#131b2e]/95 border-slate-800 backdrop-blur-xl shadow-lg'
           : 'bg-[#faf8ff]/95 border-slate-200/70 backdrop-blur-xl shadow-[0_-4px_16px_rgba(15,23,42,0.06)]'
