@@ -36,13 +36,11 @@ import { MentorsModal, MentorsData } from './components/modals/MentorsModal';
 import { AttendanceModal } from './components/modals/AttendanceModal';
 import { PasswordModal } from './components/modals/PasswordModal';
 import { NotificationsModal } from './components/modals/NotificationsModal';
-import { LogoutModal } from './components/modals/LogoutModal';
-import { FirebaseAuthModal } from './components/modals/FirebaseAuthModal';
 import { FilePreviewModal } from './components/modals/FilePreviewModal';
 
 // Firebase & Firestore
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth, logOutOfFirebase } from './lib/firebase';
+import { auth } from './lib/firebase';
 import {
   fetchFullUserDataFromFirestore,
   syncUserProfileToFirestore,
@@ -57,7 +55,6 @@ import { HomeView } from './components/views/HomeView';
 import { SchoolView } from './components/views/SchoolView';
 import { WeeklyLogView } from './components/views/WeeklyLogView';
 import { AcademicsView } from './components/views/AcademicsView';
-import { LoginView } from './components/LoginView';
 
 const INITIAL_PROFILE: TraineeProfile = {
   name: 'นางสาวศิริพร บุญเจริญ',
@@ -415,8 +412,6 @@ export default function App() {
 
   // Firebase Auth and Cloud Sync state
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [isAuthChecking, setIsAuthChecking] = useState(true);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(() =>
     loadFromStorage('tp_last_synced_at', null)
@@ -478,10 +473,7 @@ export default function App() {
           console.error('Error syncing with Firestore:', error);
         } finally {
           setIsSyncing(false);
-          setIsAuthChecking(false);
         }
-      } else {
-        setIsAuthChecking(false);
       }
     });
 
@@ -497,7 +489,6 @@ export default function App() {
   const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
   const [isPasswordOpen, setIsPasswordOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -649,7 +640,6 @@ export default function App() {
 
   const handleManualSync = async () => {
     if (!currentUser) {
-      setIsAuthModalOpen(true);
       return;
     }
     setIsSyncing(true);
@@ -669,77 +659,6 @@ export default function App() {
     }
   };
 
-  const handleLogoutConfirm = async () => {
-    try {
-      await logOutOfFirebase();
-    } catch (err) {
-      console.warn('Logout error:', err);
-    }
-    setCurrentUser(null);
-    setIsLogoutOpen(false);
-    showToast('ออกจากระบบเรียบร้อยแล้ว กรุณาเข้าสู่ระบบด้วย Gmail อีกครั้ง');
-  };
-
-  if (isAuthChecking) {
-    return (
-      <div
-        className={`min-h-screen flex flex-col items-center justify-center p-6 transition-colors ${
-          isDark ? 'bg-[#0b1120] text-slate-200' : 'bg-[#f4f7fb] text-slate-700'
-        }`}
-      >
-        <div className="flex flex-col items-center gap-4 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#003975] to-[#005bb7] flex items-center justify-center text-white shadow-xl shadow-blue-900/30 animate-pulse">
-            <span className="material-symbols-outlined text-[36px]">school</span>
-          </div>
-          <div className="flex items-center gap-2.5 text-sm font-semibold">
-            <span className="material-symbols-outlined animate-spin text-[22px] text-blue-600">
-              progress_activity
-            </span>
-            <span>กำลังตรวจสอบสถานะการเข้าสู่ระบบ...</span>
-          </div>
-          <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            ระบบรายงานการฝึกสอนประสบการณ์วิชาชีพครู
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // Require Gmail authentication before accessing any app data or menus
-  if (!currentUser) {
-    return (
-      <>
-        <LoginView
-          onLoginSuccess={(user) => {
-            setCurrentUser(user);
-          }}
-          isDark={isDark}
-          onToggleDark={() => setIsDark(!isDark)}
-          showToast={showToast}
-        />
-        {toastMessage && (
-          <div
-            id="saveToast"
-            role="status"
-            className="fixed bottom-6 right-6 max-w-md px-4 py-3 rounded-xl bg-[#004a31] text-white shadow-2xl flex items-center justify-between animate-in fade-in slide-in-from-bottom-2 duration-200 z-50"
-          >
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-[20px]">task_alt</span>
-              <span className="text-[13px] font-semibold">{toastMessage}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setToastMessage(null)}
-              className="text-white/80 hover:text-white cursor-pointer ml-2"
-            >
-              <span className="material-symbols-outlined text-[18px]">close</span>
-            </button>
-          </div>
-        )}
-      </>
-    );
-  }
-
   return (
     <div
       className={`min-h-screen flex flex-col transition-colors duration-200 ${
@@ -752,14 +671,11 @@ export default function App() {
         onChangeTab={setActiveTab}
         onOpenNotifications={() => setIsNotificationsOpen(true)}
         onOpenProfile={() => setIsEditProfileOpen(true)}
-        onOpenAuthModal={() => setIsAuthModalOpen(true)}
         onSaveAll={handleSaveAll}
         onToggleDark={() => setIsDark(!isDark)}
         unreadCount={unreadCount}
         avatarUrl={profile.avatarUrl}
         profileName={profile.name}
-        currentUser={currentUser}
-        isSyncing={isSyncing}
         isDark={isDark}
       />
 
@@ -825,17 +741,14 @@ export default function App() {
                 showToast={showToast}
                 isDark={isDark}
                 onToggleTheme={(dark) => setIsDark(dark)}
-                onOpenAuthModal={() => setIsAuthModalOpen(true)}
-                currentUser={currentUser}
-                lastSyncedAt={lastSyncedAt}
                 onSaveAll={handleSaveAll}
                 onExportBackup={handleExportBackup}
                 onImportBackup={handleImportBackup}
                 onResetData={handleResetData}
               />
 
-              {/* Logout Button */}
-              <FooterSection onLogout={() => setIsLogoutOpen(true)} isDark={isDark} />
+              {/* Institutional Footer */}
+              <FooterSection isDark={isDark} />
             </div>
           </div>
         )}
@@ -901,23 +814,6 @@ export default function App() {
       <BottomNav activeTab={activeTab} onChangeTab={setActiveTab} isDark={isDark} />
 
       {/* Interactive Modals */}
-      <FirebaseAuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        currentUser={currentUser}
-        onUserChanged={(user) => setCurrentUser(user)}
-        onAuthSuccess={(user) => {
-          setCurrentUser(user);
-          showToast(`ยินดีต้อนรับ ${user.displayName || user.email}`);
-        }}
-        onSyncNow={handleManualSync}
-        onManualSync={handleManualSync}
-        isSyncing={isSyncing}
-        lastSyncedAt={lastSyncedAt}
-        onShowToast={showToast}
-        isDark={isDark}
-      />
-
       <FilePreviewModal
         isOpen={previewFile.isOpen}
         onClose={() => setPreviewFile((prev) => ({ ...prev, isOpen: false }))}
@@ -985,13 +881,6 @@ export default function App() {
         onClose={() => setIsNotificationsOpen(false)}
         notifications={notifications}
         onMarkAllRead={handleMarkAllRead}
-        isDark={isDark}
-      />
-
-      <LogoutModal
-        isOpen={isLogoutOpen}
-        onClose={() => setIsLogoutOpen(false)}
-        onConfirm={handleLogoutConfirm}
         isDark={isDark}
       />
     </div>

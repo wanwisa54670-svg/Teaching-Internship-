@@ -1,14 +1,10 @@
 import React, { useState } from 'react';
-import { User } from 'firebase/auth';
 
 interface SecuritySectionProps {
   onOpenPassword: () => void;
   showToast: (msg: string) => void;
   isDark: boolean;
   onToggleTheme: (dark: boolean) => void;
-  onOpenAuthModal?: () => void;
-  currentUser?: User | null;
-  lastSyncedAt?: string | null;
   onSaveAll?: () => void;
   onExportBackup?: () => void;
   onImportBackup?: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -20,9 +16,6 @@ export const SecuritySection: React.FC<SecuritySectionProps> = ({
   showToast,
   isDark,
   onToggleTheme,
-  onOpenAuthModal,
-  currentUser = null,
-  lastSyncedAt = null,
   onSaveAll,
   onExportBackup,
   onImportBackup,
@@ -70,73 +63,6 @@ export const SecuritySection: React.FC<SecuritySectionProps> = ({
             : 'bg-white border-slate-100'
         }`}
       >
-        {/* Item 0: Firebase Cloud & Gmail Authentication */}
-        {onOpenAuthModal && (
-          <>
-            <button
-              type="button"
-              onClick={onOpenAuthModal}
-              className={`w-full flex items-center justify-between p-4 text-left transition-colors group cursor-pointer ${
-                isDark ? 'hover:bg-slate-800/60' : 'hover:bg-[#f2f3ff]'
-              }`}
-            >
-              <div className="flex items-center gap-3.5 min-w-0">
-                <div
-                  className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
-                    currentUser
-                      ? isDark
-                        ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/50'
-                        : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
-                      : isDark
-                      ? 'bg-amber-950/60 text-amber-400 border border-amber-800/50'
-                      : 'bg-amber-50 text-amber-600 border border-amber-200'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[24px]">
-                    {currentUser ? 'cloud_done' : 'cloud_sync'}
-                  </span>
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`text-[14px] font-semibold ${
-                        isDark ? 'text-white' : 'text-[#131b2e]'
-                      }`}
-                    >
-                      ระบบ Firebase Cloud & บัญชี Gmail
-                    </span>
-                    <span
-                      className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                        currentUser
-                          ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
-                          : 'bg-amber-500/20 text-amber-700 dark:text-amber-400'
-                      }`}
-                    >
-                      {currentUser ? 'เชื่อมต่อแล้ว' : 'ยังไม่ได้เชื่อมต่อ'}
-                    </span>
-                  </div>
-                  <span
-                    className={`text-[13px] truncate ${
-                      isDark ? 'text-slate-400' : 'text-[#444651]'
-                    }`}
-                  >
-                    {currentUser
-                      ? `${currentUser.email} • ซิงค์ล่าสุด ${lastSyncedAt || 'เมื่อสักครู่'}`
-                      : 'แตะเพื่อเข้าสู่ระบบด้วย Gmail และเปิดการซิงค์ข้อมูลบน Cloud'}
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center gap-1 text-slate-400 shrink-0 ml-2">
-                <span className="material-symbols-outlined text-[20px] group-hover:translate-x-0.5 transition-transform">
-                  chevron_right
-                </span>
-              </div>
-            </button>
-
-            <div className={`h-[1px] mx-4 ${isDark ? 'bg-slate-800' : 'bg-[#e2e7ff]'}`} />
-          </>
-        )}
-
         {/* Item 1: Weekly Log Reminder */}
         <div className="p-4 flex items-center justify-between">
           <div className="flex items-center gap-3.5 min-w-0">
