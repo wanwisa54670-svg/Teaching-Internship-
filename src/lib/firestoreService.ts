@@ -217,9 +217,43 @@ export async function deleteSchoolPhotoFromFirestore(userId: string, photoId: st
 export async function fetchFullUserDataFromFirestore(userId: string) {
   const userPath = `users/${userId}`;
   try {
-    await testConnection();
     const userDocRef = doc(db, 'users', userId);
-    const userSnap = await getDoc(userDocRef);
+    let userSnap = await getDoc(userDocRef);
+    let effectiveUserId = userId;
+
+    // Fallback: If user doc does not exist, check canonical 'main_intern'
+    if (!userSnap.exists() && userId !== 'main_intern') {
+      const mainSnap = await getDoc(doc(db, 'users', 'main_intern'));
+      if (mainSnap.exists()) {
+        userSnap = mainSnap;
+        effectiveUserId = 'main_intern';
+      }
+    }
+
+    // Fallback 2: If still not found, search the collection for any updated document
+    if (!userSnap.exists()) {
+      try {
+        const allUsersSnap = await getDocs(collection(db, 'users'));
+        if (!allUsersSnap.empty) {
+          let latestDoc = allUsersSnap.docs[0];
+          let latestTime = 0;
+          allUsersSnap.forEach((d) => {
+            const data = d.data();
+            const t = new Date(data.updatedAt || 0).getTime();
+            if (t > latestTime) {
+              latestTime = t;
+              latestDoc = d;
+            }
+          });
+          if (latestDoc && latestDoc.exists()) {
+            userSnap = latestDoc;
+            effectiveUserId = latestDoc.id;
+          }
+        }
+      } catch (e) {
+        console.warn('Fallback search failed:', e);
+      }
+    }
 
     let profile: TraineeProfile | null = null;
     let schoolInfo: SchoolDetails | null = null;
@@ -266,10 +300,10 @@ export async function fetchFullUserDataFromFirestore(userId: string) {
       }
     }
 
-    // Fetch weekly logs
+    // Fetch weekly logs from effective user document
     const logs: WeeklyLogItem[] = [];
     try {
-      const logsSnap = await getDocs(collection(db, 'users', userId, 'weekly_logs'));
+      const logsSnap = await getDocs(collection(db, 'users', effectiveUserId, 'weekly_logs'));
       logsSnap.forEach((docItem) => {
         logs.push(docItem.data() as WeeklyLogItem);
       });
@@ -281,7 +315,7 @@ export async function fetchFullUserDataFromFirestore(userId: string) {
     // Fetch academic items
     const academicItems: AcademicItem[] = [];
     try {
-      const academicsSnap = await getDocs(collection(db, 'users', userId, 'academic_items'));
+      const academicsSnap = await getDocs(collection(db, 'users', effectiveUserId, 'academic_items'));
       academicsSnap.forEach((docItem) => {
         academicItems.push(docItem.data() as AcademicItem);
       });
@@ -292,7 +326,7 @@ export async function fetchFullUserDataFromFirestore(userId: string) {
     // Fetch school photos
     const photos: SchoolPhoto[] = [];
     try {
-      const photosSnap = await getDocs(collection(db, 'users', userId, 'school_photos'));
+      const photosSnap = await getDocs(collection(db, 'users', effectiveUserId, 'school_photos'));
       photosSnap.forEach((docItem) => {
         photos.push(docItem.data() as SchoolPhoto);
       });

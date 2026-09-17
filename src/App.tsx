@@ -57,11 +57,11 @@ import { WeeklyLogView } from './components/views/WeeklyLogView';
 import { AcademicsView } from './components/views/AcademicsView';
 
 const INITIAL_PROFILE: TraineeProfile = {
-  name: 'นางสาวศิริพร บุญเจริญ',
-  studentId: '6411520038',
+  name: 'นางสาววรรวิษา พันธุ์สาย',
+  studentId: '6702041510156',
   status: 'กำลังฝึกประสบการณ์วิชาชีพครู 1',
   phone: '089-765-4321',
-  email: 'siriporn.b@edu.ac.th',
+  email: 'wanwisa54670@gmail.com',
   subjectGroup: 'ภาษาไทย (ระดับมัธยมศึกษาตอนต้น)',
   schoolName: 'ร.ร. สาธิตมหาวิทยาลัยราชภัฏ',
   educationLevel: 'มัธยมศึกษา',
@@ -444,42 +444,51 @@ export default function App() {
   useEffect(() => {
     let isMounted = true;
 
-    const initFirebaseData = async (uid: string) => {
+    const initFirebaseData = async () => {
       setIsSyncing(true);
+      const uid = getActiveUserId();
       try {
         const remoteData = await fetchFullUserDataFromFirestore(uid);
         if (!isMounted) return;
 
         if (remoteData && remoteData.exists) {
-          if (remoteData.profile) setProfile(remoteData.profile);
-          if (remoteData.schoolInfo) setSchoolInfo(remoteData.schoolInfo);
+          if (remoteData.profile) {
+            setProfile(remoteData.profile);
+            saveToStorage('tp_profile_data', remoteData.profile);
+          }
+          if (remoteData.schoolInfo) {
+            setSchoolInfo(remoteData.schoolInfo);
+            saveToStorage('tp_school_data', remoteData.schoolInfo);
+          }
           if (remoteData.weeklyLogs && remoteData.weeklyLogs.length > 0) {
             setWeeklyLogs(remoteData.weeklyLogs);
+            saveToStorage('tp_weekly_logs_data', remoteData.weeklyLogs);
           }
           if (remoteData.academicItems && remoteData.academicItems.length > 0) {
             setAcademicItems(remoteData.academicItems);
+            saveToStorage('tp_academics_data', remoteData.academicItems);
           }
-          if (remoteData.stats) setStats(remoteData.stats);
-          if (remoteData.tasks && remoteData.tasks.length > 0) setTasks(remoteData.tasks);
+          if (remoteData.stats) {
+            setStats(remoteData.stats);
+            saveToStorage('tp_stats_data', remoteData.stats);
+          }
+          if (remoteData.tasks && remoteData.tasks.length > 0) {
+            setTasks(remoteData.tasks);
+            saveToStorage('tp_tasks_data', remoteData.tasks);
+          }
           if (remoteData.announcements && remoteData.announcements.length > 0) {
             setAnnouncements(remoteData.announcements);
+            saveToStorage('tp_announcements_data', remoteData.announcements);
           }
           if (remoteData.attendanceRecords && remoteData.attendanceRecords.length > 0) {
             setAttendanceRecords(remoteData.attendanceRecords);
+            saveToStorage('tp_attendance_data', remoteData.attendanceRecords);
           }
-          if (remoteData.mentors) setMentors(remoteData.mentors);
-          showToast(`✓ เชื่อมต่อฐานข้อมูล Firebase (${FIREBASE_PROJECT_NAME}) เรียบร้อย`);
-        } else {
-          // Initialize Firestore database with default records for this intern
-          await syncUserProfileToFirestore(uid, profile, schoolInfo, stats, {
-            tasks,
-            announcements,
-            attendanceRecords,
-            mentors,
-          });
-          await syncAllWeeklyLogsToFirestore(uid, weeklyLogs);
-          await syncAllAcademicItemsToFirestore(uid, academicItems);
-          showToast(`✓ บันทึกข้อมูลตั้งต้นขึ้นสู่ Firebase (${FIREBASE_PROJECT_NAME}) สำเร็จ`);
+          if (remoteData.mentors) {
+            setMentors(remoteData.mentors);
+            saveToStorage('tp_mentors_data', remoteData.mentors);
+          }
+          showToast(`✓ ดึงข้อมูลล่าสุดจาก Firebase (${FIREBASE_PROJECT_NAME}) เรียบร้อย`);
         }
         const nowStr = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
         setLastSyncedAt(nowStr);
@@ -491,21 +500,11 @@ export default function App() {
       }
     };
 
-    // Attempt background anonymous auth if not signed in
-    if (!auth.currentUser) {
-      signInAnonymously(auth).catch(() => {
-        // Fallback to stable client ID if anonymous auth provider is not toggled in console
-      });
-    }
+    initFirebaseData();
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
-      const effectiveUid = user?.uid || getActiveUserId();
-      await initFirebaseData(effectiveUid);
     });
-
-    const activeUid = auth.currentUser?.uid || getActiveUserId();
-    initFirebaseData(activeUid);
 
     return () => {
       isMounted = false;

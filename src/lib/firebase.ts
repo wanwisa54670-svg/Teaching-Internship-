@@ -16,17 +16,25 @@ export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 
 export const FIREBASE_PROJECT_NAME = 'Teaching-Internship';
+export const CANONICAL_USER_ID = 'main_intern';
 
 export function getActiveUserId(): string {
-  if (auth.currentUser?.uid) {
-    return auth.currentUser.uid;
+  // 1. Check if an explicit ID is in URL query parameters (e.g. ?id=6702041510156 or ?id=main_intern)
+  if (typeof window !== 'undefined') {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const urlId = params.get('id');
+      if (urlId && /^[a-zA-Z0-9_-]+$/.test(urlId)) {
+        return urlId;
+      }
+    } catch {
+      // ignore
+    }
   }
-  let localId = localStorage.getItem('tp_firebase_user_id');
-  if (!localId) {
-    localId = 'intern_' + Math.random().toString(36).substring(2, 10);
-    localStorage.setItem('tp_firebase_user_id', localId);
-  }
-  return localId;
+
+  // 2. Default to CANONICAL_USER_ID so ANYONE clicking the link or opening in a new tab/browser
+  // accesses the exact same persistent teaching internship portfolio in Firebase
+  return CANONICAL_USER_ID;
 }
 
 export const googleProvider = new GoogleAuthProvider();
