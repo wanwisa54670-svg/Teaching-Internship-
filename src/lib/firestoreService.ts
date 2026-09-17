@@ -105,6 +105,7 @@ export async function saveWeeklyLogToFirestore(userId: string, log: WeeklyLogIte
       },
       { merge: true }
     );
+    await setDoc(doc(db, 'users', userId), { updatedAt: new Date().toISOString() }, { merge: true }).catch(() => {});
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -116,6 +117,11 @@ export async function saveWeeklyLogToFirestore(userId: string, log: WeeklyLogIte
 export async function syncAllWeeklyLogsToFirestore(userId: string, logs: WeeklyLogItem[]) {
   const promises = logs.map((log) => saveWeeklyLogToFirestore(userId, log));
   await Promise.all(promises);
+  try {
+    await setDoc(doc(db, 'users', userId), { updatedAt: new Date().toISOString() }, { merge: true });
+  } catch (e) {
+    console.warn('Parent doc update timestamp warning:', e);
+  }
 }
 
 /**
@@ -126,6 +132,7 @@ export async function deleteWeeklyLogFromFirestore(userId: string, logId: string
   const path = `users/${userId}/weekly_logs/${safeId}`;
   try {
     await deleteDoc(doc(db, 'users', userId, 'weekly_logs', safeId));
+    await setDoc(doc(db, 'users', userId), { updatedAt: new Date().toISOString() }, { merge: true }).catch(() => {});
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, path);
   }
@@ -149,6 +156,7 @@ export async function saveAcademicItemToFirestore(userId: string, item: Academic
       },
       { merge: true }
     );
+    await setDoc(doc(db, 'users', userId), { updatedAt: new Date().toISOString() }, { merge: true }).catch(() => {});
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -160,6 +168,11 @@ export async function saveAcademicItemToFirestore(userId: string, item: Academic
 export async function syncAllAcademicItemsToFirestore(userId: string, items: AcademicItem[]) {
   const promises = items.map((item) => saveAcademicItemToFirestore(userId, item));
   await Promise.all(promises);
+  try {
+    await setDoc(doc(db, 'users', userId), { updatedAt: new Date().toISOString() }, { merge: true });
+  } catch (e) {
+    console.warn('Parent doc update timestamp warning:', e);
+  }
 }
 
 /**
@@ -170,6 +183,7 @@ export async function deleteAcademicItemFromFirestore(userId: string, itemId: st
   const path = `users/${userId}/academic_items/${safeId}`;
   try {
     await deleteDoc(doc(db, 'users', userId, 'academic_items', safeId));
+    await setDoc(doc(db, 'users', userId), { updatedAt: new Date().toISOString() }, { merge: true }).catch(() => {});
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, path);
   }
@@ -340,6 +354,7 @@ export async function fetchFullUserDataFromFirestore(userId: string) {
 
     return {
       exists: userSnap.exists(),
+      updatedAt: userSnap.exists() ? ((userSnap.data()?.updatedAt as string) || null) : null,
       profile,
       schoolInfo,
       stats,

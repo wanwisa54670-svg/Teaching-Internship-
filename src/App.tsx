@@ -451,44 +451,72 @@ export default function App() {
         const remoteData = await fetchFullUserDataFromFirestore(uid);
         if (!isMounted) return;
 
+        const localLastEdit = loadFromStorage<number>('tp_last_edit_timestamp', 0);
+        const remoteTime = remoteData?.updatedAt ? new Date(remoteData.updatedAt).getTime() : 0;
+
         if (remoteData && remoteData.exists) {
-          if (remoteData.profile) {
-            setProfile(remoteData.profile);
-            saveToStorage('tp_profile_data', remoteData.profile);
+          // If local edits in this browser are fresher than remote, protect local edits and push to Firestore
+          if (localLastEdit > remoteTime + 1500) {
+            console.log('Fresh local edits detected. Preserving local data and syncing to Firestore...');
+            const localProfile = loadFromStorage('tp_profile_data', profile);
+            const localSchool = loadFromStorage('tp_school_data', schoolInfo);
+            const localLogs = loadFromStorage('tp_weekly_logs_data', weeklyLogs);
+            const localAcademics = loadFromStorage('tp_academics_data', academicItems);
+            const localStats = loadFromStorage('tp_stats_data', stats);
+            const localTasks = loadFromStorage('tp_tasks_data', tasks);
+            const localAnnouncements = loadFromStorage('tp_announcements_data', announcements);
+            const localAttendance = loadFromStorage('tp_attendance_data', attendanceRecords);
+            const localMentors = loadFromStorage('tp_mentors_data', mentors);
+
+            await syncUserProfileToFirestore(uid, localProfile, localSchool, localStats, {
+              tasks: localTasks,
+              announcements: localAnnouncements,
+              attendanceRecords: localAttendance,
+              mentors: localMentors,
+            });
+            await syncAllWeeklyLogsToFirestore(uid, localLogs);
+            await syncAllAcademicItemsToFirestore(uid, localAcademics);
+            showToast(`✓ ตรวจพบข้อมูลล่าสุดที่แก้ไขไว้ ระบบอัปเดตข้อมูลขึ้น Firebase เรียบร้อย`);
+          } else {
+            // Remote is newer or up to date, load from remote
+            if (remoteData.profile) {
+              setProfile(remoteData.profile);
+              saveToStorage('tp_profile_data', remoteData.profile);
+            }
+            if (remoteData.schoolInfo) {
+              setSchoolInfo(remoteData.schoolInfo);
+              saveToStorage('tp_school_data', remoteData.schoolInfo);
+            }
+            if (remoteData.weeklyLogs && remoteData.weeklyLogs.length > 0) {
+              setWeeklyLogs(remoteData.weeklyLogs);
+              saveToStorage('tp_weekly_logs_data', remoteData.weeklyLogs);
+            }
+            if (remoteData.academicItems && remoteData.academicItems.length > 0) {
+              setAcademicItems(remoteData.academicItems);
+              saveToStorage('tp_academics_data', remoteData.academicItems);
+            }
+            if (remoteData.stats) {
+              setStats(remoteData.stats);
+              saveToStorage('tp_stats_data', remoteData.stats);
+            }
+            if (remoteData.tasks && remoteData.tasks.length > 0) {
+              setTasks(remoteData.tasks);
+              saveToStorage('tp_tasks_data', remoteData.tasks);
+            }
+            if (remoteData.announcements && remoteData.announcements.length > 0) {
+              setAnnouncements(remoteData.announcements);
+              saveToStorage('tp_announcements_data', remoteData.announcements);
+            }
+            if (remoteData.attendanceRecords && remoteData.attendanceRecords.length > 0) {
+              setAttendanceRecords(remoteData.attendanceRecords);
+              saveToStorage('tp_attendance_data', remoteData.attendanceRecords);
+            }
+            if (remoteData.mentors) {
+              setMentors(remoteData.mentors);
+              saveToStorage('tp_mentors_data', remoteData.mentors);
+            }
+            showToast(`✓ ดึงข้อมูลล่าสุดจาก Firebase (${FIREBASE_PROJECT_NAME}) เรียบร้อย`);
           }
-          if (remoteData.schoolInfo) {
-            setSchoolInfo(remoteData.schoolInfo);
-            saveToStorage('tp_school_data', remoteData.schoolInfo);
-          }
-          if (remoteData.weeklyLogs && remoteData.weeklyLogs.length > 0) {
-            setWeeklyLogs(remoteData.weeklyLogs);
-            saveToStorage('tp_weekly_logs_data', remoteData.weeklyLogs);
-          }
-          if (remoteData.academicItems && remoteData.academicItems.length > 0) {
-            setAcademicItems(remoteData.academicItems);
-            saveToStorage('tp_academics_data', remoteData.academicItems);
-          }
-          if (remoteData.stats) {
-            setStats(remoteData.stats);
-            saveToStorage('tp_stats_data', remoteData.stats);
-          }
-          if (remoteData.tasks && remoteData.tasks.length > 0) {
-            setTasks(remoteData.tasks);
-            saveToStorage('tp_tasks_data', remoteData.tasks);
-          }
-          if (remoteData.announcements && remoteData.announcements.length > 0) {
-            setAnnouncements(remoteData.announcements);
-            saveToStorage('tp_announcements_data', remoteData.announcements);
-          }
-          if (remoteData.attendanceRecords && remoteData.attendanceRecords.length > 0) {
-            setAttendanceRecords(remoteData.attendanceRecords);
-            saveToStorage('tp_attendance_data', remoteData.attendanceRecords);
-          }
-          if (remoteData.mentors) {
-            setMentors(remoteData.mentors);
-            saveToStorage('tp_mentors_data', remoteData.mentors);
-          }
-          showToast(`✓ ดึงข้อมูลล่าสุดจาก Firebase (${FIREBASE_PROJECT_NAME}) เรียบร้อย`);
         }
         const nowStr = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
         setLastSyncedAt(nowStr);
@@ -547,7 +575,7 @@ export default function App() {
 
     // 2. Save directly to Firebase Project Teaching-Internship
     setIsSyncing(true);
-    const uid = currentUser?.uid || auth.currentUser?.uid || getActiveUserId();
+    const uid = getActiveUserId();
     try {
       await syncUserProfileToFirestore(uid, profile, schoolInfo, stats, {
         tasks,
@@ -649,13 +677,17 @@ export default function App() {
   };
 
   const handleProfileSave = (updated: TraineeProfile) => {
+    saveToStorage('tp_last_edit_timestamp', Date.now());
     setProfile(updated);
-    // Keep school name synced if changed in profile
+    saveToStorage('tp_profile_data', updated);
+    let updatedSchool = schoolInfo;
     if (updated.schoolName !== schoolInfo.name) {
-      setSchoolInfo((prev) => ({ ...prev, name: updated.schoolName }));
+      updatedSchool = { ...schoolInfo, name: updated.schoolName };
+      setSchoolInfo(updatedSchool);
+      saveToStorage('tp_school_data', updatedSchool);
     }
-    const uid = currentUser?.uid || auth.currentUser?.uid || getActiveUserId();
-    syncUserProfileToFirestore(uid, updated, schoolInfo, stats, {
+    const uid = getActiveUserId();
+    syncUserProfileToFirestore(uid, updated, updatedSchool, stats, {
       tasks,
       announcements,
       attendanceRecords,
@@ -665,13 +697,17 @@ export default function App() {
   };
 
   const handleUpdateSchoolInfo = (updated: SchoolDetails) => {
+    saveToStorage('tp_last_edit_timestamp', Date.now());
     setSchoolInfo(updated);
-    // Keep profile schoolName synced
+    saveToStorage('tp_school_data', updated);
+    let updatedProfile = profile;
     if (updated.name !== profile.schoolName) {
-      setProfile((prev) => ({ ...prev, schoolName: updated.name }));
+      updatedProfile = { ...profile, schoolName: updated.name };
+      setProfile(updatedProfile);
+      saveToStorage('tp_profile_data', updatedProfile);
     }
-    const uid = currentUser?.uid || auth.currentUser?.uid || getActiveUserId();
-    syncUserProfileToFirestore(uid, profile, updated, stats, {
+    const uid = getActiveUserId();
+    syncUserProfileToFirestore(uid, updatedProfile, updated, stats, {
       tasks,
       announcements,
       attendanceRecords,
@@ -681,24 +717,30 @@ export default function App() {
   };
 
   const handleUpdateWeeklyLogs = (updatedLogs: WeeklyLogItem[]) => {
+    saveToStorage('tp_last_edit_timestamp', Date.now());
     setWeeklyLogs(updatedLogs);
-    const uid = currentUser?.uid || auth.currentUser?.uid || getActiveUserId();
+    saveToStorage('tp_weekly_logs_data', updatedLogs);
+    const uid = getActiveUserId();
     syncAllWeeklyLogsToFirestore(uid, updatedLogs).catch((e) =>
       console.warn('Firestore weeklyLogs sync error:', e)
     );
   };
 
   const handleUpdateAcademicItems = (updatedItems: AcademicItem[]) => {
+    saveToStorage('tp_last_edit_timestamp', Date.now());
     setAcademicItems(updatedItems);
-    const uid = currentUser?.uid || auth.currentUser?.uid || getActiveUserId();
+    saveToStorage('tp_academics_data', updatedItems);
+    const uid = getActiveUserId();
     syncAllAcademicItemsToFirestore(uid, updatedItems).catch((e) =>
       console.warn('Firestore academic items sync error:', e)
     );
   };
 
   const handleUpdateTasks = (updatedTasks: TaskItem[]) => {
+    saveToStorage('tp_last_edit_timestamp', Date.now());
     setTasks(updatedTasks);
-    const uid = currentUser?.uid || auth.currentUser?.uid || getActiveUserId();
+    saveToStorage('tp_tasks_data', updatedTasks);
+    const uid = getActiveUserId();
     syncUserProfileToFirestore(uid, profile, schoolInfo, stats, {
       tasks: updatedTasks,
       announcements,
@@ -707,9 +749,38 @@ export default function App() {
     }).catch((e) => console.warn('Firestore tasks sync error:', e));
   };
 
+  const handleUpdateStats = (updatedStats: DashboardStats) => {
+    saveToStorage('tp_last_edit_timestamp', Date.now());
+    setStats(updatedStats);
+    saveToStorage('tp_stats_data', updatedStats);
+    const uid = getActiveUserId();
+    syncUserProfileToFirestore(uid, profile, schoolInfo, updatedStats, {
+      tasks,
+      announcements,
+      attendanceRecords,
+      mentors,
+    }).catch((e) => console.warn('Firestore stats sync error:', e));
+    showToast('✓ อัปเดตข้อมูลสถิติและบันทึกลง Firebase เรียบร้อย');
+  };
+
+  const handleUpdateAnnouncements = (updatedAnnouncements: AnnouncementItem[]) => {
+    saveToStorage('tp_last_edit_timestamp', Date.now());
+    setAnnouncements(updatedAnnouncements);
+    saveToStorage('tp_announcements_data', updatedAnnouncements);
+    const uid = getActiveUserId();
+    syncUserProfileToFirestore(uid, profile, schoolInfo, stats, {
+      tasks,
+      announcements: updatedAnnouncements,
+      attendanceRecords,
+      mentors,
+    }).catch((e) => console.warn('Firestore announcements sync error:', e));
+  };
+
   const handleUpdateMentors = (updatedMentors: MentorsData) => {
+    saveToStorage('tp_last_edit_timestamp', Date.now());
     setMentors(updatedMentors);
-    const uid = currentUser?.uid || auth.currentUser?.uid || getActiveUserId();
+    saveToStorage('tp_mentors_data', updatedMentors);
+    const uid = getActiveUserId();
     syncUserProfileToFirestore(uid, profile, schoolInfo, stats, {
       tasks,
       announcements,
@@ -720,8 +791,10 @@ export default function App() {
   };
 
   const handleUpdateAttendance = (updatedAttendance: AttendanceRecord[]) => {
+    saveToStorage('tp_last_edit_timestamp', Date.now());
     setAttendanceRecords(updatedAttendance);
-    const uid = currentUser?.uid || auth.currentUser?.uid || getActiveUserId();
+    saveToStorage('tp_attendance_data', updatedAttendance);
+    const uid = getActiveUserId();
     syncUserProfileToFirestore(uid, profile, schoolInfo, stats, {
       tasks,
       announcements,
@@ -733,7 +806,7 @@ export default function App() {
 
   const handleManualSync = async () => {
     setIsSyncing(true);
-    const uid = currentUser?.uid || auth.currentUser?.uid || getActiveUserId();
+    const uid = getActiveUserId();
     try {
       await syncUserProfileToFirestore(uid, profile, schoolInfo, stats, {
         tasks,
@@ -855,9 +928,9 @@ export default function App() {
             stats={stats}
             tasks={tasks}
             announcements={announcements}
-            onUpdateStats={setStats}
+            onUpdateStats={handleUpdateStats}
             onUpdateTasks={handleUpdateTasks}
-            onUpdateAnnouncements={setAnnouncements}
+            onUpdateAnnouncements={handleUpdateAnnouncements}
             onNavigateToSettings={() => setActiveTab('settings')}
             onNavigateToWeekly={() => setActiveTab('weekly-log')}
             onNavigateToSchool={() => setActiveTab('school')}
